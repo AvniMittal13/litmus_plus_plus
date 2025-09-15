@@ -1,5 +1,13 @@
 # Azure Deployment Instructions
 
+## SQLite Compatibility Fix
+
+This application uses ChromaDB which requires SQLite >= 3.35.0. Azure App Service may have an older version, so we've implemented the following fixes:
+
+1. **pysqlite3-binary**: Added to requirements.txt to provide a newer SQLite version
+2. **chromadb_config.py**: Automatic SQLite configuration module
+3. **Enhanced startup script**: Configures SQLite before importing ChromaDB
+
 ## Environment Variables Configuration
 
 After deploying to Azure Web App Service, you need to configure the following application settings in the Azure Portal:

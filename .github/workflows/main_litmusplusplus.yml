@@ -32,7 +32,14 @@ jobs:
       - name: Install dependencies
         run: |
           source venv/bin/activate
+          pip install --upgrade pip
+          pip install pysqlite3-binary
           pip install -r requirements.txt
+          
+      - name: Verify SQLite version
+        run: |
+          source venv/bin/activate
+          python -c "import sqlite3; print('SQLite version:', sqlite3.sqlite_version)"
         
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
 
