@@ -94,5 +94,9 @@ def handle_join_session(data):
 
 if __name__ == '__main__':
     print("Starting Main Agent Web Interface...")
-    print("Access the application at: http://localhost:5000")
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000, use_reloader=False)
+    # Use Azure's PORT environment variable or default to 5000 for local development
+    port = int(os.environ.get('PORT', 5000))
+    print(f"Access the application at: http://localhost:{port}")
+    # Set debug=False for production deployment
+    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False)
