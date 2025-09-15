@@ -5,6 +5,10 @@ This ensures proper module path resolution for the Flask app
 """
 import os
 import sys
+from dotenv import load_dotenv
+
+# Load environment variables from .env file if it exists
+load_dotenv()
 
 # Add the current directory to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))

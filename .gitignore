@@ -208,3 +208,5 @@ $RECYCLE.BIN/
 *.key
 secrets.json
 config.json
+.env
+*.env

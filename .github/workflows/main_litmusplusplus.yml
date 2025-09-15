@@ -70,7 +70,7 @@ jobs:
         with:
           app-name: 'litmusplusplus'
           slot-name: 'Production'
-          startup-file: 'startup.py'
+          startup-command: 'python startup.py'
         env:
           FLASK_ENV: 'production'
           
