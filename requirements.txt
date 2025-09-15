@@ -1,12 +1,26 @@
 # Core dependencies
-autogen>=0.2.0
 python-dotenv>=1.0.0
 azure-identity>=1.15.0
 firecrawl-py>=1.0.0
-
+chroma==1.0.16
 # Flask web interface dependencies
 flask==2.3.3
 flask-socketio==5.3.6
 python-socketio==5.8.0
 eventlet==0.33.3
 gunicorn
+matplotlib
+numpy
+pandas
+
+scikit-learn
+pydantic
+multiprocess
+autogen==0.9.8.post1
+autogen-agentchat==0.7.4
+autogen-core==0.7.4
+autogen-ext==0.7.4
+ag2==0.9.8.post1
+azure-ai-documentintelligence==1.0.2
+azure-ai-inference==1.0.0b9
+Jinja2==3.1.6
