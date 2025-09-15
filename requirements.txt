@@ -25,4 +25,8 @@ ag2==0.9.8.post1
 azure-ai-documentintelligence==1.0.2
 azure-ai-inference==1.0.0b9
 Jinja2==3.1.6
+langchain==0.3.27
+langchain-core==0.3.74
+langchain-text-splitters==0.3.9
+langsmith==0.4.14
 openai
