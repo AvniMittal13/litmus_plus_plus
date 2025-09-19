@@ -1,8 +1,8 @@
 from os import getenv
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+# from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 from azure.ai.inference.models import SystemMessage, UserMessage, AssistantMessage  
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider  
+# from azure.identity import DefaultAzureCredential, get_bearer_token_provider  
 from openai import AzureOpenAI  
 import os
 import re
