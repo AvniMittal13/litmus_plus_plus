@@ -9,14 +9,23 @@ import time
 from datetime import datetime
 
 # Add parent directory to path to import existing agents
-# sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from web_interface.services.main_agent_service import MainAgentService
 from web_interface.services.session_manager import SessionManager
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'thought-agent-web-interface-key'
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+# socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
+environment = os.getenv("FLASK_ENV", "development")
+if environment == "production":
+    socketio = SocketIO(app, async_mode = 'eventlet', cors_allowed_origins="*")
+    # CORS(app, resources={r"/*": {"origins": [config.config["FRONTEND_URL"]]}})
+else:
+    socketio = SocketIO(app, cors_allowed_origins="*")
+    # CORS(app, resources={r"/*": {"origins": [config.config["FRONTEND_URL_DEV"],config.config["FRONTEND_URL"]]}})
+
 
 # Initialize services
 agent_service = MainAgentService()
