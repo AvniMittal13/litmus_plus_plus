@@ -1,6 +1,4 @@
-from flask import Flenvironment = os.getenv("FLASK_ENV", "development")
-# Always use eventlet for production deployment with gunicorn
-socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*", logger=True, engineio_logger=True)nder_template, request
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import sys
 import os
@@ -10,8 +8,11 @@ import json
 import time
 from datetime import datetime
 
+import eventlet
+eventlet.monkey_patch()
+
 # Add parent directory to path to import existing agents
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from web_interface.services.main_agent_service import MainAgentService
 from web_interface.services.session_manager import SessionManager
