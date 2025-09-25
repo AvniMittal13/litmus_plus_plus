@@ -3,7 +3,7 @@ python-dotenv>=1.0.0
 azure-identity>=1.15.0
 firecrawl-py==2.16.5
 chromadb==1.0.16
-pysqlite3-binary>=0.5.2
+# pysqlite3-binary>=0.5.2
 
 # Flask web interface dependencies
 flask==2.3.3
@@ -18,9 +18,9 @@ scikit-learn
 pydantic
 multiprocess
 autogen==0.9.8.post1
-autogen-agentchat==0.7.4
-autogen-core==0.7.4
-autogen-ext==0.7.4
+autogen-agentchat
+autogen-core
+autogen-ext
 ag2==0.9.8.post1
 azure-ai-documentintelligence==1.0.2
 azure-ai-inference==1.0.0b9
@@ -31,5 +31,6 @@ langchain-text-splitters==0.3.9
 langsmith==0.4.14
 openai==1.99.9
 pyautogen==0.9.0
-autogen-agentchat[retrievechat]~=0.2
 ag2[openai]
+ag2[retrievechat]
+ipython
