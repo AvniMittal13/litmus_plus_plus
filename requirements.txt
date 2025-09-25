@@ -29,4 +29,5 @@ langchain==0.3.27
 langchain-core==0.3.74
 langchain-text-splitters==0.3.9
 langsmith==0.4.14
-openai
+openai==1.99.9
+ag2[openai]
