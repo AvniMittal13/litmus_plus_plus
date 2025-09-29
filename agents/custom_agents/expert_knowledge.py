@@ -83,7 +83,7 @@ You are the Expert Knowledge Agent, providing guidance like an experienced PhD r
                 "docs_path": [
                     # "https://raw.githubusercontent.com/microsoft/FLAML/main/website/docs/Examples/Integrate%20-%20Spark.md",
                     # "https://raw.githubusercontent.com/microsoft/FLAML/main/website/docs/Research.md",
-                    "C:\\Users\\avnimittal\\OneDrive - Microsoft\\Desktop\\tp\\litmus_agent\\knowledge\\knowledge.md"
+                    os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "knowledge.md")
                     # os.path.join(os.path.abspath(""), "..", "website", "docs"),
                 ],
                 "custom_text_types": ["mdx"],

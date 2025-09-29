@@ -12,7 +12,7 @@ import eventlet
 eventlet.monkey_patch()
 
 # Add parent directory to path to import existing agents
-# sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from web_interface.services.main_agent_service import MainAgentService
 from web_interface.services.session_manager import SessionManager

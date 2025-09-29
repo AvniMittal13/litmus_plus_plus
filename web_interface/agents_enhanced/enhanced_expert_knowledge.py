@@ -104,7 +104,7 @@ class EnhancedExpertKnowledgeAgent(ConversableAgent):
             retrieve_config={
                 "task": "default",
                 "docs_path": [
-                    "C:\\Users\\avnimittal\\OneDrive - Microsoft\\Desktop\\tp\\litmus_agent\\knowledge\\knowledge.md"
+                    os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "knowledge.md")
                 ],
                 "custom_text_types": ["mdx"],
                 "chunk_token_size": 1000,
