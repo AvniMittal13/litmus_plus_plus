@@ -8,8 +8,8 @@ import json
 import time
 from datetime import datetime
 
-import eventlet
-eventlet.monkey_patch()
+# import eventlet
+# eventlet.monkey_patch()
 
 # Add parent directory to path to import existing agents
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -26,7 +26,7 @@ if environment == "production":
     socketio = SocketIO(app, async_mode = 'eventlet', cors_allowed_origins="*")
     # CORS(app, resources={r"/*": {"origins": [config.config["FRONTEND_URL"]]}})
 else:
-    socketio = SocketIO(app, cors_allowed_origins="*")
+    socketio = SocketIO(app,  async_mode = 'eventlet', cors_allowed_origins="*")
     # CORS(app, resources={r"/*": {"origins": [config.config["FRONTEND_URL_DEV"],config.config["FRONTEND_URL"]]}})
 
 
@@ -69,6 +69,13 @@ def handle_conversation(data):
     try:
         session_id = data.get('session_id')
         user_query = data.get('query', '').strip()
+
+        user_query = f"""
+        Run the following Question without asking any clarifications. Assume answers/responses to the questions and continue
+Use coder agent to generate code for performing predictive analysis by training intelligent regressors wherever required.
+
+Question: {user_query}
+"""
         
         if not user_query:
             emit('error', {'message': 'Query cannot be empty'})
