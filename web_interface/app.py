@@ -118,4 +118,9 @@ if __name__ == '__main__':
     print(f"Access the application at: http://localhost:{port}")
     # Set debug=False for production deployment
     debug_mode = os.environ.get('FLASK_ENV') != 'production'
-    socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False)
+    
+    # For production Azure deployment, allow unsafe werkzeug
+    if os.environ.get('FLASK_ENV') == 'production':
+        socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False, allow_unsafe_werkzeug=True)
+    else:
+        socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False)

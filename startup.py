@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Startup script for Azure Web App deployment
-This ensures proper module path resolution for the Flask app
+Startup script for local development and testing
+For Azure App Service deployment, use app.py with gunicorn instead
 """
 import os
 import sys
@@ -37,4 +37,9 @@ if __name__ == '__main__':
     
     # Set production configuration
     debug_mode = os.environ.get('FLASK_ENV') != 'production'
-    socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False)
+    
+    # For production Azure deployment, allow unsafe werkzeug
+    if os.environ.get('FLASK_ENV') == 'production':
+        socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False, allow_unsafe_werkzeug=True)
+    else:
+        socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False)
