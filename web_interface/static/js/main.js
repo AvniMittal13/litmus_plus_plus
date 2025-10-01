@@ -32,6 +32,7 @@ class ThoughtAgentApp {
             // Make components globally accessible for event handlers
             window.thinkingPanel = this.thinkingPanel;
             window.detailsPanel = this.detailsPanel;
+            window.chatInterface = this.chatInterface; // Make chat interface globally accessible
             
             // Setup application-level event listeners
             this.setupApplicationEvents();

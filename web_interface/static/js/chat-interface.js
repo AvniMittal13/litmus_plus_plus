@@ -182,7 +182,8 @@ class ChatInterface {
             type: 'agent',
             content: message,
             agentName: agentName,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            messageId: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
         };
         
         this.messageHistory.push(messageData);
@@ -222,6 +223,7 @@ class ChatInterface {
         } else if (messageData.type === 'agent') {
             // Only show agent name if it exists and is not null/empty
             const hasAgentName = messageData.agentName && messageData.agentName.trim() !== '';
+            const messageId = messageData.messageId || `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             messageHTML = `
                 <div class="message-bubble">
                     ${hasAgentName ? `<div class="agent-name-header"><strong>${messageData.agentName}</strong></div>` : ''}
@@ -229,8 +231,18 @@ class ChatInterface {
                         ${this.formatMessage(messageData.content)}
                     </div>
                 </div>
-                <div class="message-timestamp">
-                    ${this.formatTimestamp(messageData.timestamp)}
+                <div class="message-timestamp-container">
+                    <div class="message-timestamp">
+                        ${this.formatTimestamp(messageData.timestamp)}
+                    </div>
+                    <div class="message-actions">
+                        <button class="btn-action copy-btn" onclick="window.chatInterface.copyToClipboard('${messageId}')" title="Copy to Clipboard">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button class="btn-action download-btn" onclick="window.chatInterface.downloadMarkdown('${messageId}')" title="Download as Markdown">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
                 </div>
             `;
         } else if (messageData.type === 'system') {
@@ -243,6 +255,17 @@ class ChatInterface {
         }
         
         messageDiv.innerHTML = messageHTML;
+        
+        // Store original content for download/copy functionality
+        if (messageData.type === 'agent') {
+            const messageId = messageData.messageId;
+            if (messageId) {
+                messageDiv.setAttribute('data-message-id', messageId);
+                messageDiv.setAttribute('data-original-content', messageData.content);
+                messageDiv.setAttribute('data-timestamp', messageData.timestamp);
+                messageDiv.setAttribute('data-agent-name', messageData.agentName || 'AI Assistant');
+            }
+        }
         
         // Process markdown content if markdown utils are available
         if (window.markdownUtils) {
@@ -356,6 +379,161 @@ class ChatInterface {
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
     }
     
+    // Copy functionality
+    copyToClipboard(messageId) {
+        try {
+            const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (!messageElement) {
+                this.showError('Message not found');
+                return;
+            }
+            
+            const originalContent = messageElement.getAttribute('data-original-content');
+            const timestamp = messageElement.getAttribute('data-timestamp');
+            const agentName = messageElement.getAttribute('data-agent-name');
+            
+            if (!originalContent) {
+                this.showError('No content to copy');
+                return;
+            }
+            
+            // Format content for clipboard
+            const formattedContent = this.formatContentForExport(originalContent, timestamp, agentName);
+            
+            // Use modern clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(formattedContent).then(() => {
+                    this.showSuccessMessage('Content copied to clipboard!');
+                }).catch((err) => {
+                    console.error('Failed to copy content:', err);
+                    this.fallbackCopyToClipboard(formattedContent);
+                });
+            } else {
+                this.fallbackCopyToClipboard(formattedContent);
+            }
+        } catch (error) {
+            console.error('Copy error:', error);
+            this.showError('Failed to copy content');
+        }
+    }
+    
+    // Fallback copy method for older browsers
+    fallbackCopyToClipboard(text) {
+        try {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            textArea.setSelectionRange(0, 99999);
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            if (successful) {
+                this.showSuccessMessage('Content copied to clipboard!');
+            } else {
+                this.showError('Failed to copy content');
+            }
+        } catch (error) {
+            console.error('Fallback copy error:', error);
+            this.showError('Copy not supported in this browser');
+        }
+    }
+    
+    // Download functionality
+    downloadMarkdown(messageId) {
+        try {
+            const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (!messageElement) {
+                this.showError('Message not found');
+                return;
+            }
+            
+            const originalContent = messageElement.getAttribute('data-original-content');
+            const timestamp = messageElement.getAttribute('data-timestamp');
+            const agentName = messageElement.getAttribute('data-agent-name');
+            
+            if (!originalContent) {
+                this.showError('No content to download');
+                return;
+            }
+            
+            // Format content for download
+            const formattedContent = this.formatContentForExport(originalContent, timestamp, agentName);
+            
+            // Generate filename
+            const date = new Date(timestamp);
+            const dateStr = date.toISOString().slice(0, 19).replace(/[:.]/g, '-');
+            const filename = `ai-response-${dateStr}.md`;
+            
+            // Create and trigger download
+            const blob = new Blob([formattedContent], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.style.display = 'none';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Clean up the URL object
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+            
+            this.showSuccessMessage(`Downloaded as ${filename}`);
+            
+        } catch (error) {
+            console.error('Download error:', error);
+            this.showError('Failed to download content');
+        }
+    }
+    
+    // Format content for export (both copy and download)
+    formatContentForExport(content, timestamp, agentName) {
+        const date = new Date(timestamp);
+        const formattedDate = date.toLocaleString();
+        
+        return `# AI Response Report
+
+**Generated:** ${formattedDate}
+**Agent:** ${agentName}
+**Session:** ${this.socketManager.getSessionId() || 'Unknown'}
+
+---
+
+${content}
+
+---
+
+*Generated by Thought Agent Interface*`;
+    }
+    
+    // Success message helper
+    showSuccessMessage(message) {
+        const successDiv = document.createElement('div');
+        successDiv.className = 'alert alert-success alert-dismissible fade show message-notification';
+        successDiv.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            <span>${message}</span>
+            <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+        `;
+        
+        // Insert at the top of chat messages
+        this.chatMessages.insertBefore(successDiv, this.chatMessages.firstChild);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            if (successDiv.parentElement) {
+                successDiv.remove();
+            }
+        }, 3000);
+    }
+    
     clearChat() {
         if (this.isConversationActive) {
             if (!confirm('A conversation is currently active. Are you sure you want to clear the chat?')) {
@@ -397,3 +575,6 @@ class ChatInterface {
 
 // Export for use in other modules
 window.ChatInterface = ChatInterface;
+
+// Make instance globally accessible for action buttons
+window.chatInterface = null;
