@@ -99,6 +99,18 @@ class SocketManager {
             this.emit('conversation_completed', data);
         });
         
+        // NEW: Response completed (single response finished, conversation continues)
+        this.socket.on('response_completed', (data) => {
+            console.log('[SocketManager] Response completed');
+            this.emit('response_completed', data);
+        });
+        
+        // NEW: Conversation ended (explicitly ended by user)
+        this.socket.on('conversation_ended', (data) => {
+            console.log('[SocketManager] Conversation ended');
+            this.emit('conversation_ended', data);
+        });
+        
         // Error events
         this.socket.on('error', (data) => {
             console.error('[SocketManager] Error:', data);
@@ -141,6 +153,20 @@ class SocketManager {
         this.socket.emit('join_session', {
             session_id: sessionId
         });
+    }
+    
+    endConversation() {
+        if (!this.sessionId) {
+            console.error('[SocketManager] No session ID available');
+            return false;
+        }
+        
+        console.log('[SocketManager] Ending conversation');
+        this.socket.emit('end_conversation', {
+            session_id: this.sessionId
+        });
+        
+        return true;
     }
     
     // Event listener management

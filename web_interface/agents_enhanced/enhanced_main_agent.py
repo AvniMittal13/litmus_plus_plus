@@ -76,6 +76,11 @@ class EnhancedMainAgent:
             }, room=self.session_id)
             raise
     
+    def continue_conversation(self, user_query):
+        """Continue existing conversation with new query"""
+        print(f"[EnhancedMainAgent] Continuing conversation with: {user_query}")
+        return self.run(user_query)  # Same logic, just different context
+    
     def _run_with_orchestration(self, user_query):
         """
         Main orchestration workflow implementing proper MainAgent pattern:

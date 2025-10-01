@@ -168,9 +168,19 @@ class ThinkingPanel {
             this.showConversationCompleted(data);
         });
         
-        // Conversation completed
+        // Conversation completed (keep for backward compatibility)
         this.socketManager.on('conversation_completed', (data) => {
             this.finalizeConversation(data);
+        });
+        
+        // NEW: Response completed (single response finished, conversation continues)
+        this.socketManager.on('response_completed', (data) => {
+            this.showResponseCompleted(data);
+        });
+        
+        // NEW: Conversation ended (explicitly ended by user)
+        this.socketManager.on('conversation_ended', (data) => {
+            this.showConversationEnded(data);
         });
         
         // Error handling
@@ -459,6 +469,74 @@ class ThinkingPanel {
         
         this.thinkingContent.appendChild(finalDiv);
         finalDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+    
+    // NEW: Show response completed (conversation continues)
+    showResponseCompleted(data) {
+        const responseDiv = document.createElement('div');
+        responseDiv.className = 'response-completed mb-3';
+        responseDiv.innerHTML = `
+            <div class="alert alert-info border-left-info">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-check-circle fa-2x text-info me-3"></i>
+                    <div>
+                        <h6 class="mb-1">Response Generated (Message ${data.message_count})</h6>
+                        <p class="mb-0">Ready for follow-up questions in this conversation.</p>
+                        <small class="text-muted">${this.formatTimestamp(data.timestamp)}</small>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        this.thinkingContent.appendChild(responseDiv);
+        responseDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+    
+    // NEW: Show conversation ended
+    showConversationEnded(data) {
+        const endDiv = document.createElement('div');
+        endDiv.className = 'conversation-ended mb-3';
+        endDiv.innerHTML = `
+            <div class="alert alert-warning border-left-warning">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-stop-circle fa-2x text-warning me-3"></i>
+                    <div>
+                        <h6 class="mb-1">Conversation Ended</h6>
+                        <p class="mb-0">Chat cleared. Start a new conversation with your next message.</p>
+                        <small class="text-muted">${this.formatTimestamp(data.timestamp)}</small>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        this.thinkingContent.appendChild(endDiv);
+        endDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+    
+    // NEW: Show conversation ended
+    showConversationEnded(data) {
+        const endDiv = document.createElement('div');
+        endDiv.className = 'conversation-ended mb-3';
+        endDiv.innerHTML = `
+            <div class="alert alert-warning border-left-warning">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-stop-circle fa-2x text-warning me-3"></i>
+                    <div>
+                        <h6 class="mb-1">Conversation Ended</h6>
+                        <p class="mb-0">Chat cleared. Start a new conversation with your next message.</p>
+                        <small class="text-muted">${this.formatTimestamp(data.timestamp)}</small>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        this.thinkingContent.appendChild(endDiv);
+        endDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        
+        // Clear thinking process after showing end message
+        setTimeout(() => {
+            this.clearThinkingProcess();
+        }, 2000);
     }
     
     showError(data) {

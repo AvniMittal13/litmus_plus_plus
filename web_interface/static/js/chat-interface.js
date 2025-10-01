@@ -6,6 +6,7 @@ class ChatInterface {
         this.socketManager = socketManager;
         this.messageHistory = [];
         this.isConversationActive = false;
+        this.hasOngoingConversation = false;  // NEW: Track if conversation is ongoing
         
         // DOM elements
         this.chatMessages = document.getElementById('chatMessages');
@@ -65,6 +66,7 @@ class ChatInterface {
         // Conversation started
         this.socketManager.on('conversation_started', (data) => {
             this.isConversationActive = true;
+            this.hasOngoingConversation = true;  // NEW
             this.showLoading(true, 'Starting conversation...');
             this.disableInput();
         });
@@ -86,13 +88,34 @@ class ChatInterface {
             this.updateLoadingStatus('Generating final response...');
         });
         
-        // Final conversation completed
+        // OLD: Final conversation completed (keep for backward compatibility)
         this.socketManager.on('conversation_completed', (data) => {
             this.isConversationActive = false;
             this.showLoading(false);
             this.enableInput();
-            this.addAgentMessage(data.final_response, null); // Remove "Final Response:" heading
+            this.addAgentMessage(data.final_response, null);
             this.showSystemMessage('Conversation completed!');
+        });
+        
+        // NEW: Response completed (single response finished, conversation continues)
+        this.socketManager.on('response_completed', (data) => {
+            this.isConversationActive = false;  // Ready for next message
+            this.showLoading(false);
+            this.enableInput();
+            this.addAgentMessage(data.final_response, null);
+            // Don't show "conversation completed" - it's ongoing
+            if (data.message_count === 1) {
+                this.showSystemMessage('Response received! Ask follow-up questions to continue.');
+            }
+        });
+        
+        // NEW: Conversation ended (explicitly ended by user)
+        this.socketManager.on('conversation_ended', (data) => {
+            this.isConversationActive = false;
+            this.hasOngoingConversation = false;
+            this.showLoading(false);
+            this.enableInput();
+            this.showSystemMessage('Conversation ended. Start a new conversation!');
         });
         
         // Error handling
@@ -340,7 +363,16 @@ class ChatInterface {
             }
         }
         
+        // NEW: End conversation on backend if ongoing
+        if (this.hasOngoingConversation) {
+            this.socketManager.endConversation();
+        }
+        
+        // Clear frontend state
         this.messageHistory = [];
+        this.hasOngoingConversation = false;
+        this.isConversationActive = false;
+        
         this.chatMessages.innerHTML = `
             <div class="welcome-message">
                 <div class="alert alert-info">

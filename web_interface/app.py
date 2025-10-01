@@ -111,6 +111,35 @@ def handle_join_session(data):
     else:
         emit('error', {'message': 'Invalid session ID'})
 
+@socketio.on('end_conversation')
+def handle_end_conversation(data):
+    """Handle conversation end (clear chat)"""
+    try:
+        session_id = data.get('session_id')
+        
+        if not session_id or not session_manager.session_exists(session_id):
+            emit('error', {'message': 'Invalid session'})
+            return
+        
+        print(f"[WebSocket] Ending conversation for session {session_id}")
+        
+        # End conversation via agent service
+        success = agent_service.end_conversation(session_id, socketio)
+        
+        if success:
+            print(f"[WebSocket] Successfully ended conversation for session {session_id}")
+        else:
+            print(f"[WebSocket] No active conversation found for session {session_id}")
+            # Still emit ended event for frontend cleanup
+            emit('conversation_ended', {
+                'session_id': session_id,
+                'timestamp': datetime.now().isoformat()
+            }, room=session_id)
+        
+    except Exception as e:
+        print(f"[Error] Failed to end conversation: {e}")
+        emit('error', {'message': f'Failed to end conversation: {str(e)}'})
+
 if __name__ == '__main__':
     print("Starting Main Agent Web Interface...")
     # Use Azure's PORT environment variable or default to 5000 for local development
