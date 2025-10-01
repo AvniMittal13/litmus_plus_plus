@@ -29,4 +29,12 @@ from web_interface.app import app, socketio
 if __name__ == "__main__":
     # This won't be called when using gunicorn, but useful for local testing
     port = int(os.environ.get('PORT', 8000))
-    socketio.run(app, debug=False, host='0.0.0.0', port=port)
+    # socketio.run(app, debug=False, host='0.0.0.0', port=port)
+
+    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    
+    # For production Azure deployment, allow unsafe werkzeug
+    if os.environ.get('FLASK_ENV') == 'production':
+        socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False, allow_unsafe_werkzeug=True)
+    else:
+        socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False)
