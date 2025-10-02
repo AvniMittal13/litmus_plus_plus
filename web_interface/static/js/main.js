@@ -1058,7 +1058,31 @@ class DetailsPanel {
                 icon = 'fa-tools';
                 badgeClass = 'bg-warning';
                 title = 'Tool Call';
-            } else if (item.type === 'internal_error' || item.type === 'rag_error' || item.type === 'agent_error') {
+            } else if (item.type === 'tool_call_execution') {
+                icon = 'fa-cog';
+                badgeClass = 'bg-primary';
+                title = `Tool: ${item.metadata?.tool_name || 'Unknown'}`;
+            } else if (item.type === 'tool_call_arguments') {
+                icon = 'fa-list-alt';
+                badgeClass = 'bg-info';
+                title = 'Tool Arguments';
+            } else if (item.type === 'tool_call_response') {
+                icon = 'fa-reply';
+                badgeClass = 'bg-success';
+                title = 'Tool Response';
+            } else if (item.type === 'tool_extraction_start') {
+                icon = 'fa-search';
+                badgeClass = 'bg-secondary';
+                title = 'Analyzing Tool Calls';
+            } else if (item.type === 'tool_extraction_complete') {
+                icon = 'fa-check-double';
+                badgeClass = 'bg-success';
+                title = 'Tool Analysis Complete';
+            } else if (item.type === 'tool_content_detected') {
+                icon = 'fa-eye';
+                badgeClass = 'bg-warning';
+                title = 'Tool Content Detected';
+            } else if (item.type === 'internal_error' || item.type === 'rag_error' || item.type === 'agent_error' || item.type === 'tool_extraction_error') {
                 icon = 'fa-exclamation-triangle';
                 badgeClass = 'bg-danger';
                 title = 'Error';
@@ -1079,7 +1103,7 @@ class DetailsPanel {
                                     <div class="internal-step-timestamp text-muted small">${timestamp}</div>
                                 </div>
                                 <div class="internal-step-description">
-                                    ${this.renderExpandableContent(item.content, messageId, 150)}
+                                    ${this.renderToolCallContent(item, messageId)}
                                 </div>
                             </div>
                         </div>
@@ -1101,6 +1125,110 @@ class DetailsPanel {
         return colorMap[badgeClass] || '#6c757d';
     }
     
+    renderToolCallContent(item, messageId) {
+        // Handle special tool call content rendering
+        if (item.type === 'tool_call_execution') {
+            const metadata = item.metadata || {};
+            let content = `<div class="tool-call-execution">
+                <div class="tool-call-header">
+                    <strong>Tool:</strong> ${metadata.tool_name || 'Unknown'}
+                    ${metadata.call_sequence ? `<span class="badge bg-secondary ms-2">#${metadata.call_sequence}</span>` : ''}
+                </div>`;
+            
+            if (metadata.tool_call_id) {
+                content += `<div class="tool-call-id text-muted small">
+                    <i class="fas fa-tag me-1"></i>ID: ${metadata.tool_call_id}
+                </div>`;
+            }
+            
+            content += `<div class="tool-call-content mt-2">${this.renderExpandableContent(item.content, messageId, 200)}</div>
+            </div>`;
+            
+            return content;
+        } else if (item.type === 'tool_call_arguments') {
+            const metadata = item.metadata || {};
+            let content = `<div class="tool-call-arguments">
+                <div class="tool-arguments-header">
+                    <strong>Arguments for ${metadata.tool_name || 'Tool'}:</strong>
+                </div>`;
+            
+            if (metadata.full_arguments && Object.keys(metadata.full_arguments).length > 0) {
+                const jsonString = JSON.stringify(metadata.full_arguments, null, 2);
+                const argumentsId = `args-${messageId}`;
+                
+                if (jsonString.length > 200) {
+                    // Make JSON expandable if it's long
+                    content += `<div class="tool-arguments-json mt-2">
+                        <div class="expandable-content">
+                            <div class="content-preview" id="preview-${argumentsId}">
+                                <pre class="bg-light p-2 rounded small"><code>${jsonString.substring(0, 200)}...</code></pre>
+                            </div>
+                            <div class="content-full" id="full-${argumentsId}" style="display: none;">
+                                <pre class="bg-light p-2 rounded small"><code>${jsonString}</code></pre>
+                            </div>
+                            <div class="content-controls mt-2">
+                                <button class="btn btn-sm btn-outline-primary expand-btn" 
+                                        onclick="window.detailsPanel.toggleContent('${argumentsId}')"
+                                        id="toggle-${argumentsId}">
+                                    <i class="fas fa-expand-alt me-1"></i>
+                                    Show Full Arguments
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+                } else {
+                    content += `<div class="tool-arguments-json mt-2">
+                        <pre class="bg-light p-2 rounded small"><code>${jsonString}</code></pre>
+                    </div>`;
+                }
+            } else {
+                content += `<div class="tool-arguments-content mt-2">${this.renderExpandableContent(item.content, messageId, 200)}</div>`;
+            }
+            
+            content += `</div>`;
+            return content;
+        } else if (item.type === 'tool_call_response') {
+            const metadata = item.metadata || {};
+            let content = `<div class="tool-call-response">
+                <div class="tool-response-header d-flex justify-content-between align-items-center">
+                    <strong>Tool Response</strong>
+                    ${metadata.content_length ? `<span class="badge bg-info">${metadata.content_length} chars</span>` : ''}
+                </div>`;
+            
+            if (metadata.tool_call_id) {
+                content += `<div class="tool-call-id text-muted small">
+                    <i class="fas fa-link me-1"></i>Response to: ${metadata.tool_call_id}
+                </div>`;
+            }
+            
+            // Use full content if available, otherwise use the truncated content
+            const responseContent = metadata.full_content || item.content;
+            content += `<div class="tool-response-content mt-2">
+                ${this.renderExpandableContent(responseContent, messageId, 200)}
+            </div></div>`;
+            
+            return content;
+        } else if (item.type === 'tool_content_detected') {
+            const metadata = item.metadata || {};
+            let content = `<div class="tool-content-detected">
+                <div class="tool-content-header">
+                    <strong>Tool-related Content:</strong>
+                    ${metadata.message_role ? `<span class="badge bg-secondary ms-2">${metadata.message_role}</span>` : ''}
+                </div>`;
+            
+            // Use full content if available, otherwise use the item content
+            const contentToShow = metadata.full_content || item.content;
+            content += `<div class="tool-content-body mt-2">
+                ${this.renderExpandableContent(contentToShow, messageId, 200)}
+            </div></div>`;
+            
+            return content;
+        } else {
+            // Default rendering for non-tool call content
+            return this.renderExpandableContent(item.content, messageId, 200);
+        }
+    }
+    
     truncateContent(content, maxLength) {
         if (content.length <= maxLength) {
             return content;
@@ -1108,7 +1236,33 @@ class DetailsPanel {
         return content.substring(0, maxLength) + '...';
     }
     
-    renderExpandableContent(content, messageId, maxLength = 150) {
+    renderExpandableMarkdownContent(content, uniqueId) {
+        if (content.length <= 200) {
+            return this.renderSimpleMarkdown(content);
+        }
+        
+        const truncatedContent = content.substring(0, 200) + '...';
+        return `
+            <div class="expandable-content">
+                <div class="content-preview" id="preview-${uniqueId}">
+                    ${this.renderSimpleMarkdown(truncatedContent)}
+                </div>
+                <div class="content-full" id="full-${uniqueId}" style="display: none;">
+                    ${this.renderSimpleMarkdown(content)}
+                </div>
+                <div class="content-controls mt-2">
+                    <button class="btn btn-sm btn-outline-primary expand-btn" 
+                            onclick="window.detailsPanel.toggleContent('${uniqueId}')"
+                            id="toggle-${uniqueId}">
+                        <i class="fas fa-expand-alt me-1"></i>
+                        Show More
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    renderExpandableContent(content, messageId, maxLength = 200) {
         if (content.length <= maxLength) {
             return `<div class="message-content">${this.renderMarkdown(content)}</div>`;
         }
@@ -1147,7 +1301,15 @@ class DetailsPanel {
                 // Show preview, hide full
                 preview.style.display = 'block';
                 full.style.display = 'none';
-                toggleBtn.innerHTML = '<i class="fas fa-expand-alt me-1"></i>Show More';
+                
+                // Update button text based on context
+                const currentText = toggleBtn.textContent.trim();
+                if (currentText.includes('Arguments')) {
+                    toggleBtn.innerHTML = '<i class="fas fa-expand-alt me-1"></i>Show Full Arguments';
+                } else {
+                    toggleBtn.innerHTML = '<i class="fas fa-expand-alt me-1"></i>Show Full Content';
+                }
+                
                 toggleBtn.classList.remove('btn-outline-secondary');
                 toggleBtn.classList.add('btn-outline-primary');
             } else {
@@ -1360,7 +1522,7 @@ class DetailsPanel {
                     </div>
                     <div class="step-content">
                         <div class="alert ${messageInfo.alertClass}">
-                            <div class="markdown-content">${this.renderSimpleMarkdown(item.content)}</div>
+                            <div class="markdown-content">${this.renderExpandableMarkdownContent(item.content, `full-conv-${index}`)}</div>
                             ${this.renderMessageMetadata(item)}
                         </div>
                     </div>

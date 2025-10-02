@@ -831,7 +831,15 @@ class EnhancedThoughtAgent(ThoughtAgent):
             'content_processing': 'content_analysis',
             'final_synthesis': 'result_synthesis',
             'search_completed': 'completion',
-            'search_error': 'error_handling'
+            'search_error': 'error_handling',
+            # New tool call phases
+            'tool_extraction_start': 'tool_analysis',
+            'tool_call_execution': 'tool_processing',
+            'tool_call_arguments': 'tool_processing',
+            'tool_call_response': 'tool_processing',
+            'tool_content_detected': 'content_analysis',
+            'tool_extraction_complete': 'tool_analysis',
+            'tool_extraction_error': 'error_handling'
         }
         
         return phase_map.get(message_type, 'processing')

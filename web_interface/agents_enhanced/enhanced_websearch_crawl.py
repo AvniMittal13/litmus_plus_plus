@@ -247,6 +247,9 @@ You are a **Web Search and Crawl Agent** with **expert knowledge in NLP for low-
             # Execute the chat
             chat_result = user_proxy.initiate_chat(assistant, message=user_question)
             
+            # Extract and emit tool calls from the chat result
+            self._extract_tool_calls_from_chat_result(chat_result)
+            
             # Extract the response
             response = user_proxy._oai_messages[assistant][-1]["content"]
             
@@ -279,3 +282,110 @@ You are a **Web Search and Crawl Agent** with **expert knowledge in NLP for low-
             
             # Return a fallback response
             return True, f"Error performing web search: {str(e)}"
+
+    def _extract_tool_calls_from_chat_result(self, chat_result):
+        """Extract and emit tool calls and responses from the chat conversation"""
+        try:
+            if not chat_result or not hasattr(chat_result, 'chat_history'):
+                self._emit_internal_message(
+                    "tool_extraction_info",
+                    "No chat history available for tool call extraction",
+                    {"chat_result_available": chat_result is not None}
+                )
+                return
+            
+            tool_call_sequence = 1
+            
+            self._emit_internal_message(
+                "tool_extraction_start",
+                f"Analyzing chat history for tool calls ({len(chat_result.chat_history)} messages)...",
+                {"message_count": len(chat_result.chat_history)}
+            )
+            
+            for i, message in enumerate(chat_result.chat_history):
+                # Handle tool calls (when assistant wants to call a tool)
+                if message.get('tool_calls'):
+                    for tool_call in message['tool_calls']:
+                        function_info = tool_call.get('function', {})
+                        tool_name = function_info.get('name', 'unknown_tool')
+                        tool_args_str = function_info.get('arguments', '{}')
+                        
+                        try:
+                            import json
+                            tool_args = json.loads(tool_args_str) if tool_args_str else {}
+                        except json.JSONDecodeError:
+                            tool_args = {"raw_arguments": tool_args_str}
+                        
+                        self._emit_internal_message(
+                            "tool_call_execution",
+                            f"Tool Call #{tool_call_sequence}: {tool_name}",
+                            {
+                                "tool_name": tool_name,
+                                "tool_call_id": tool_call.get('id', f'call_{tool_call_sequence}'),
+                                "tool_arguments": tool_args,
+                                "call_sequence": tool_call_sequence,
+                                "message_index": i
+                            }
+                        )
+                        
+                        # Emit detailed arguments
+                        if tool_args and tool_args != {}:
+                            # Send full arguments to frontend - let frontend handle truncation
+                            self._emit_internal_message(
+                                "tool_call_arguments",
+                                f"Arguments for {tool_name}: {str(tool_args)}",  # Send full arguments
+                                {
+                                    "tool_name": tool_name,
+                                    "full_arguments": tool_args,
+                                    "call_sequence": tool_call_sequence
+                                }
+                            )
+                        
+                        tool_call_sequence += 1
+                
+                # Handle tool responses (results from tool execution)
+                elif message.get('tool_responses'):
+                    for tool_response in message['tool_responses']:
+                        tool_call_id = tool_response.get('tool_call_id', 'unknown')
+                        content = tool_response.get('content', 'No content')
+                        
+                        # Send full content to frontend - let frontend handle truncation
+                        self._emit_internal_message(
+                            "tool_call_response",
+                            f"Tool Response: {content}",  # Send full content
+                            {
+                                "tool_call_id": tool_call_id,
+                                "full_content": content,
+                                "content_length": len(content),
+                                "message_index": i
+                            }
+                        )
+                
+                # Handle regular content that might contain tool execution info
+                elif message.get('content') and 'db_search_and_scrape' in message.get('content', ''):
+                    content = message.get('content', '')
+                    # Send full content to frontend - let frontend handle truncation
+                    self._emit_internal_message(
+                        "tool_content_detected",
+                        f"Tool-related content detected: {content}",  # Send full content
+                        {
+                            "content_preview": content[:500],  # Keep preview in metadata for reference
+                            "full_content": content,
+                            "message_role": message.get('role', 'unknown'),
+                            "message_index": i
+                        }
+                    )
+            
+            self._emit_internal_message(
+                "tool_extraction_complete",
+                f"Tool call extraction completed. Found {tool_call_sequence - 1} tool calls.",
+                {"total_tool_calls": tool_call_sequence - 1}
+            )
+            
+        except Exception as e:
+            self._emit_internal_message(
+                "tool_extraction_error",
+                f"Error extracting tool calls: {str(e)}",
+                {"error": str(e)}
+            )
+            print(f"[EnhancedWebSearchCrawl] Error extracting tool calls: {e}")

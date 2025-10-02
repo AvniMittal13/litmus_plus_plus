@@ -225,13 +225,13 @@ You are the Expert Knowledge Agent, providing guidance like an experienced PhD r
                         if role == 'user':
                             self._emit_internal_message(
                                 "rag_query",
-                                f"RAG Query: {content[:200]}...",
+                                f"RAG Query: {content}",  # Send full content
                                 {"role": "user", "full_content": content, "message_index": i}
                             )
                         elif role == 'assistant':
                             self._emit_internal_message(
                                 "rag_response",
-                                f"RAG Response: {content[:200]}...",
+                                f"RAG Response: {content}",  # Send full content  
                                 {"role": "assistant", "full_content": content, "message_index": i}
                             )
                 

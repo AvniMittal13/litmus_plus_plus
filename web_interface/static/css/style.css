@@ -1608,3 +1608,129 @@ html, body {
     border-radius: 3px;
     font-size: 0.85em;
 }
+
+/* Tool Call Styling */
+.tool-call-execution {
+    background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+    border-left: 4px solid #2196f3;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 6px;
+}
+
+.tool-call-header {
+    font-weight: 600;
+    color: #1976d2;
+    margin-bottom: 8px;
+}
+
+.tool-call-id {
+    font-family: 'Courier New', monospace;
+    color: #666;
+    font-size: 0.85em;
+}
+
+.tool-call-arguments {
+    background: linear-gradient(135deg, #fff3e0 0%, #f1f8e9 100%);
+    border-left: 4px solid #ff9800;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 6px;
+}
+
+.tool-arguments-header {
+    font-weight: 600;
+    color: #f57c00;
+    margin-bottom: 8px;
+}
+
+.tool-arguments-json pre {
+    background: #f5f5f5 !important;
+    border: 1px solid #ddd;
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 0;
+}
+
+.tool-call-response {
+    background: linear-gradient(135deg, #e8f5e8 0%, #f0fff4 100%);
+    border-left: 4px solid #4caf50;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 6px;
+}
+
+.tool-response-header {
+    font-weight: 600;
+    color: #388e3c;
+    margin-bottom: 8px;
+}
+
+.tool-content-detected {
+    background: linear-gradient(135deg, #fff8e1 0%, #fffde7 100%);
+    border-left: 4px solid #ffc107;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 6px;
+}
+
+.tool-content-header {
+    font-weight: 600;
+    color: #f57f17;
+    margin-bottom: 8px;
+}
+
+.tool-call-execution .badge,
+.tool-call-arguments .badge,
+.tool-call-response .badge,
+.tool-content-detected .badge {
+    font-size: 0.75em;
+    padding: 4px 8px;
+}
+
+/* Enhanced Expandable Content */
+.expandable-content {
+    position: relative;
+}
+
+.content-preview {
+    transition: opacity 0.3s ease;
+}
+
+.content-full {
+    transition: opacity 0.3s ease;
+}
+
+.content-controls {
+    text-align: left;
+}
+
+.expand-btn {
+    font-size: 0.85em;
+    padding: 4px 12px;
+    border-radius: 15px;
+    transition: all 0.2s ease;
+}
+
+.expand-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.tool-arguments-json .expandable-content {
+    margin-top: 8px;
+}
+
+.tool-arguments-json pre {
+    margin-bottom: 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Content length indicators */
+.content-length-indicator {
+    font-size: 0.75em;
+    color: #6c757d;
+    font-style: italic;
+    margin-top: 4px;
+}
