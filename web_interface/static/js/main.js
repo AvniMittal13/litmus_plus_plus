@@ -46,6 +46,9 @@ class ThoughtAgentApp {
             this.isInitialized = true;
             console.log('[ThoughtAgentApp] Application initialized successfully');
             
+            // Show API constraints notification
+            this.showApiConstraintsNotification();
+            
         } catch (error) {
             console.error('[ThoughtAgentApp] Failed to initialize:', error);
             this.showInitializationError(error);
@@ -304,6 +307,40 @@ class ThoughtAgentApp {
     // Public API
     getSocketManager() {
         return this.socketManager;
+    }
+    
+    showApiConstraintsNotification() {
+        // Create notification banner
+        const notificationDiv = document.createElement('div');
+        notificationDiv.className = 'alert alert-warning alert-dismissible position-fixed top-0 start-50 translate-middle-x mt-3';
+        notificationDiv.style.zIndex = '9999';
+        notificationDiv.style.maxWidth = '600px';
+        notificationDiv.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+        notificationDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="fas fa-info-circle fa-lg text-warning me-3"></i>
+                <div>
+                    <h6 class="mb-1"><strong>API Constraints Notice</strong></h6>
+                    <p class="mb-0">Due to Firecrawl API constraints, the Web Search and Crawl agent is currently running only on extracted papers and not the complete web. Results will be restricted to the extracted paper set.</p>
+                </div>
+            </div>
+            <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+        `;
+        
+        document.body.appendChild(notificationDiv);
+        
+        // Auto-remove after 8 seconds
+        setTimeout(() => {
+            if (notificationDiv.parentNode) {
+                notificationDiv.style.opacity = '0';
+                notificationDiv.style.transition = 'opacity 0.5s ease-out';
+                setTimeout(() => {
+                    if (notificationDiv.parentNode) {
+                        notificationDiv.remove();
+                    }
+                }, 500);
+            }
+        }, 8000);
     }
     
     getChatInterface() {
