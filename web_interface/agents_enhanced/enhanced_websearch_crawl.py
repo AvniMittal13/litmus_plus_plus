@@ -1,7 +1,6 @@
 import os
 import sys
 import threading
-import time
 from datetime import datetime
 from dotenv import load_dotenv, dotenv_values
 import shutil
@@ -50,26 +49,6 @@ class EnhancedWebSearchCrawlAgent(ConversableAgent):
         # Internal conversation tracking
         self.internal_conversation = []
         self.conversation_step = 0
-        
-        # Register webcrawl tool if available
-        try:
-            from agents.tools.webcrawl import firecrawl_search_tool
-            
-            # Register tool for LLM use
-            self.register_for_llm(
-                name=firecrawl_search_tool["name"], 
-                description=firecrawl_search_tool["description"]
-            )(firecrawl_search_tool["run_function"])
-            
-            # Register tool for execution
-            self.register_for_execution(
-                name=firecrawl_search_tool["name"]
-            )(firecrawl_search_tool["run_function"])
-            
-            print("[EnhancedWebSearchCrawlAgent] Successfully registered firecrawl search tool")
-            
-        except Exception as e:
-            print(f"[EnhancedWebSearchCrawlAgent] Warning: Could not register firecrawl tool: {e}")
 
     def _emit_internal_message(self, message_type: str, content: str, metadata: dict = None):
         """Emit internal conversation message to UI via WebSocket"""
@@ -98,111 +77,8 @@ class EnhancedWebSearchCrawlAgent(ConversableAgent):
         except Exception as e:
             print(f"[EnhancedWebSearchCrawl] Error emitting internal message: {e}")
 
-    def _analyze_user_request(self, user_query: str):
-        """Analyze user request to plan search strategy"""
-        self._emit_internal_message(
-            "search_planning", 
-            f"Analyzing user request to plan search strategy: '{user_query}'",
-            {"query": user_query, "step": "planning"}
-        )
-        
-        # Extract search keywords and intent
-        search_keywords = []
-        search_intent = "general_search"
-        
-        # Simple keyword extraction (could be enhanced with NLP)
-        keywords = re.findall(r'\b\w+\b', user_query.lower())
-        search_keywords = [word for word in keywords if len(word) > 2]
-        
-        # Determine search intent
-        if any(word in user_query.lower() for word in ['latest', 'recent', 'new', 'current']):
-            search_intent = "recent_information"
-        elif any(word in user_query.lower() for word in ['how', 'tutorial', 'guide', 'steps']):
-            search_intent = "instructional"
-        elif any(word in user_query.lower() for word in ['compare', 'versus', 'difference']):
-            search_intent = "comparative"
-        
-        self._emit_internal_message(
-            "search_strategy",
-            f"Search strategy determined: {search_intent} with keywords: {', '.join(search_keywords[:5])}",
-            {
-                "keywords": search_keywords,
-                "intent": search_intent,
-                "keyword_count": len(search_keywords)
-            }
-        )
-        
-        return search_keywords, search_intent
-
-    def _execute_search(self, search_query: str):
-        """Execute web search using available tools"""
-        self._emit_internal_message(
-            "search_execution_start",
-            f"Executing web search for: '{search_query}'",
-            {"search_query": search_query, "tool": "firecrawl"}
-        )
-        
-        try:
-            # This would be replaced with actual tool execution in the real implementation
-            # For now, we'll simulate the search process
-            
-            self._emit_internal_message(
-                "web_crawling",
-                "Crawling web pages and extracting relevant content...",
-                {"status": "in_progress", "crawl_type": "targeted"}
-            )
-            
-            # Simulate processing time
-            time.sleep(0.5)
-            
-            self._emit_internal_message(
-                "content_extraction",
-                "Extracting and processing content from crawled pages...",
-                {"status": "processing", "content_type": "structured"}
-            )
-            
-            self._emit_internal_message(
-                "search_results_analysis",
-                "Analyzing search results and filtering relevant information...",
-                {"status": "analyzing", "filter_criteria": "relevance_score"}
-            )
-            
-            return f"Search completed for query: {search_query}"
-            
-        except Exception as e:
-            self._emit_internal_message(
-                "search_error",
-                f"Error during web search execution: {str(e)}",
-                {"error": str(e), "status": "error"}
-            )
-            raise
-
-    def _synthesize_results(self, search_results: str, user_query: str):
-        """Synthesize search results into a coherent response"""
-        self._emit_internal_message(
-            "result_synthesis_start",
-            "Synthesizing search results into coherent response...",
-            {"input_length": len(search_results), "synthesis_type": "comprehensive"}
-        )
-        
-        # Analyze relevance
-        self._emit_internal_message(
-            "relevance_analysis",
-            "Analyzing relevance of found information to user query...",
-            {"query": user_query, "analysis_type": "semantic_matching"}
-        )
-        
-        # Structure response
-        self._emit_internal_message(
-            "response_structuring",
-            "Structuring response with citations and source references...",
-            {"structure_type": "cited_response", "source_count": "multiple"}
-        )
-        
-        return search_results
-
     def _reply_user(self, messages=None, sender=None, config=None):
-        """Enhanced reply method with real-time streaming"""
+        """Enhanced reply method with real-time streaming and actual web search functionality"""
         print(f"[EnhancedWebSearchCrawl] _reply_user called with messages={len(messages) if messages else 0}")
         
         if all((messages is None, sender is None)):
@@ -226,26 +102,173 @@ class EnhancedWebSearchCrawlAgent(ConversableAgent):
                 {"query": user_question, "agent_type": "websearch_crawl"}
             )
             
-            # Analyze user request
-            search_keywords, search_intent = self._analyze_user_request(user_question)
+            # Import firecrawl tool
+            try:
+                # from agents.tools.webcrawl import db_search_and_scrape_tool
+                from agents.tools.db_search_and_scrape import db_search_and_scrape_tool
+
+            except ImportError as e:
+                self._emit_internal_message(
+                    "tool_import_error",
+                    f"Failed to import firecrawl tool: {str(e)}",
+                    {"error": str(e)}
+                )
+                return True, f"Error: Could not import web search tool: {str(e)}"
             
-            # Execute search
-            search_results = self._execute_search(user_question)
+#             # Define the system message for web search
+#             system_message = """
+# **Role:**
+# You are a **Web Search and Crawl Agent** with **expert knowledge in NLP for low-resource languages**.
+# - You search and crawl the web using the **Firecrawl tool**.
+# - Use Firecrawl **only** when up-to-date or external information is required and not already available.
+# - Always consider **specific challenges and opportunities in low-resource NLP** and relate them to the user's query.
+
+# ---
+
+# ### Responsibilities
+
+# 1. **Search Execution**
+# - Call `firecrawl_search` with **precise and well-formed search instructions**.
+# - Run **multiple, diverse queries** before finalizing results. This helps in gathering information from multiple sources and increases credibility.
+# - If previous searches are given in input then DONOT repeat searching from them. Search for diverse **aspects** or papers for the topic.
+
+# 2. **Result Quality**
+# - Return only **accurate, and high-quality** results.
+# - Ensure **diversity** in results. If a topic is already covered, expand to **related subtopics**.
+# - Prioritize **usefulness over quantity**.
+
+# 3. **Final Response Construction**
+# - Provide results in a **structured format**. If numbers are found, present in detailed tables
+# - Always **cite all sources** used.
+# - Include summary of **additional insights** from web scraping for broader analysis.
+# - Present **detailed numerical information in tables** (fill with actual numbers whenever found). DONOT create numbers on your own.
+# - Provide a **brief insight/summary** of the tables.
+# - If nothing found after multiple queries, provide a summary of the search results and insights gained.
+
+# 4. **Iterative Search**
+# - After each query, decide if **further searches** are needed.
+# - Refine or expand queries accordingly.
+
+# ---
+
+# ### Termination Rule
+# - Give Final answer only in the end after multiple searches. Once answer is given it CANNOT be changed. Contiuously call `firecrawl_search` until satisfied.
+# - Once all searches and summaries are completed, output the final structured response.
+# - End with `TERMINATE`.
+# """
+
+            system_message= """
+**Role:**
+You are a **Web Search and Crawl Agent** with **expert knowledge in NLP for low-resource languages**.
+- You search and crawl the web using the **Firecrawl tool**.
+- Use Firecrawl **only** when up-to-date or external information is required and not already available.
+- Always consider **specific challenges and opportunities in low-resource NLP** and relate them to the user’s query.
+
+---
+
+### Responsibilities
+
+1. **Search Execution**
+- Call `db_search_and_scrape_tool` with **precise and well-formed search instructions**.
+- Run **multiple, diverse queries** before finalizing results. This helps in gathering information from multiple sources and increases credibility.
+- If previous searches are given in input then DONOT repeat searching from them. Search for diverse **aspects** or papers for the topic.
+
+2. **Result Quality**
+- Return only **accurate, and high-quality** results.
+- Ensure **diversity** in results. If a topic is already covered, expand to **related subtopics**.
+- Prioritize **usefulness over quantity**.
+
+3. **Final Response Construction**
+- Provide results in a **structured format**. If numbers are found, present in detailed tables
+- Always **cite all sources** used.
+- Include summary of **additional insights** from web scraping for broader analysis.
+- Present **detailed numerical information in tables** (fill with actual numbers whenever found). DONOT create numbers on your own.
+- Provide a **brief insight/summary** of the tables.
+- If nothing found after multiple queries, provide a summary of the search results and insights gained.
+
+4. **Iterative Search**
+- After each query, decide if **further searches** are needed.
+- Refine or expand queries accordingly.
+
+---
+
+### Termination Rule
+- Give Final answer only in the end after multiple searches. Once answer is given it CANNOT be changed. Contiuously call `db_search_and_scrape_tool` until satisfied.
+- Once all searches and summaries are completed, output the final structured response.
+- End with `TERMINATE`.
+
+"""
+
+
+            self._emit_internal_message(
+                "agent_setup",
+                "Setting up assistant and user proxy agents for web search execution...",
+                {"system_message_length": len(system_message)}
+            )
+
+            # Create assistant agent with web search capabilities
+            assistant = ConversableAgent(
+                name="Assistant",
+                system_message=system_message,
+                llm_config=model_config,
+            )
+
+            # Create user proxy agent for tool execution
+            user_proxy = ConversableAgent(
+                name="User",
+                llm_config=False,
+                is_termination_msg=lambda msg: msg.get("content") is not None and "TERMINATE" in msg["content"],
+                human_input_mode="NEVER",
+            )
+
+            # Register the firecrawl search tool
+            self._emit_internal_message(
+                "tool_registration",
+                "Registering db_search_and_scrape tool with agents...",
+                {"tool_name": "firecrawl_search"}
+            )
+
+            assistant.register_for_llm(
+                name=db_search_and_scrape_tool["name"], 
+                description=db_search_and_scrape_tool["description"]
+            )(db_search_and_scrape_tool["run_function"])
+
+            user_proxy.register_for_execution(
+                name=db_search_and_scrape_tool["name"]
+            )(db_search_and_scrape_tool["run_function"])
+
+            # Start the conversation
+            self._emit_internal_message(
+                "chat_initiation",
+                "Initiating chat between assistant and user proxy for web search execution...",
+                {"user_question_preview": user_question[:100]}
+            )
+
+            # Execute the chat
+            chat_result = user_proxy.initiate_chat(assistant, message=user_question)
             
-            # Synthesize results
-            final_response = self._synthesize_results(search_results, user_question)
+            # Extract the response
+            response = user_proxy._oai_messages[assistant][-1]["content"]
+            
+            self._emit_internal_message(
+                "response_processing",
+                "Processing and cleaning response from web search agents...",
+                {"response_length": len(response)}
+            )
+
+            # Remove the TERMINATE keyword from response
+            response = re.sub(r"TERMINATE", "", response)
             
             self._emit_internal_message(
                 "websearch_completion",
                 "Web search and crawl process completed successfully",
                 {
-                    "response_length": len(final_response),
-                    "search_intent": search_intent,
-                    "keywords_used": len(search_keywords)
+                    "final_response_length": len(response),
+                    "chat_result_available": chat_result is not None
                 }
             )
             
-            return True, final_response
+            return True, response
             
         except Exception as e:
             self._emit_internal_message(

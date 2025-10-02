@@ -51,7 +51,8 @@ def load_scraped_content() -> Dict:
         print(f"Error loading scraped content: {e}")
         return {}
 
-db_path = os.getenv("DB_PATH", "")
+# Use relative path from project root for deployment compatibility
+db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "db", "all_embeddings_combined.pkl")
 top_k: int = 1
 
 def get_embedding(text: str, model: str = "text-embedding-ada-002") -> List[float]:
