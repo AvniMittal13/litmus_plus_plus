@@ -285,6 +285,8 @@ class EnhancedMainAgent:
                 session_id=thought_session_id,
                 socketio_instance=self.socketio,
                 agent_metadata=agent_metadata,
+                parent_context='main_agent',
+                thought_agent_id=thought_name,
                 parent_event_forwarder=event_forwarder
             )
             

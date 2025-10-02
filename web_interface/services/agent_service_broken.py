@@ -22,8 +22,17 @@ class ThoughtAgentService:
         """Start a conversation for a specific session"""
         # Create or get agent for this session
         if session_id not in self._active_sessions:
+            # Extract thought agent ID
+            thought_agent_id = session_id.split('_thought_')[1] if '_thought_' in session_id else None
+            
             self._active_sessions[session_id] = {
-                'agent': EnhancedThoughtAgent(socketio=socketio, session_id=session_id),
+                'agent': EnhancedThoughtAgent(
+                    session_id=session_id, 
+                    socketio_instance=socketio,
+                    agent_metadata={},
+                    parent_context='main_agent',
+                    thought_agent_id=thought_agent_id
+                ),
                 'processing': False
             }
         
@@ -92,8 +101,17 @@ class ThoughtAgentService:
         
         # Use the active session or create one
         if self.session_id not in self._active_sessions:
+            # Extract thought agent ID
+            thought_agent_id = self.session_id.split('_thought_')[1] if '_thought_' in self.session_id else None
+            
             self._active_sessions[self.session_id] = {
-                'agent': EnhancedThoughtAgent(socketio=self.socketio, session_id=self.session_id),
+                'agent': EnhancedThoughtAgent(
+                    session_id=self.session_id,
+                    socketio_instance=self.socketio,
+                    agent_metadata={},
+                    parent_context='main_agent',
+                    thought_agent_id=thought_agent_id
+                ),
                 'processing': False
             }
         

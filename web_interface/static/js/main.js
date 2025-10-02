@@ -663,20 +663,21 @@ class DetailsPanel {
     }
     
     getAgentDisplayName(agentName) {
+        // Map any legacy names to standard backend names first
+        const standardName = this.mapLegacyAgentName(agentName);
+        
         const displayNames = {
-            'expert_knowledge': 'Expert Knowledge',
-            'websearch_and_crawl': 'Web Search & Crawl',
+            'expert_knowledge_agent': 'Expert Knowledge',
+            'websearch_and_crawl_agent': 'Web Search & Crawl',
             'code_executor': 'Code Executor',
             'user_proxy_agent': 'User Proxy',
             'research_planner_agent': 'Research Planner',
-            'expert_knowledge_agent': 'Expert Knowledge',
-            'websearch_and_crawl_agent': 'Web Search & Crawl',
             'coder_agent': 'Coder',
             'code_executor_agent': 'Code Executor',
             'send_user_msg_agent': 'Response Formatter'
         };
         
-        return displayNames[agentName] || agentName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        return displayNames[standardName] || standardName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
     
     formatTimestamp(timestamp) {
@@ -982,8 +983,22 @@ class DetailsPanel {
     }
     
     // Helper methods for new functionality
+    mapLegacyAgentName(agentName) {
+        // Map legacy frontend names to standard backend names
+        const legacyMap = {
+            'expert_knowledge': 'expert_knowledge_agent',
+            'websearch_and_crawl': 'websearch_and_crawl_agent'
+        };
+        return legacyMap[agentName] || agentName;
+    }
+    
+    isEnhancedAgent(agentName) {
+        const standardName = this.mapLegacyAgentName(agentName);
+        return ['expert_knowledge_agent', 'websearch_and_crawl_agent'].includes(standardName);
+    }
+    
     isCustomAgent(agentName) {
-        return ['expert_knowledge_agent', 'websearch_and_crawl_agent'].includes(agentName);
+        return this.isEnhancedAgent(agentName);
     }
     
     renderInternalConversationPreview(conversation) {
@@ -1147,6 +1162,8 @@ class DetailsPanel {
     }
     
     showInternalConversationFullView(agentName, stepId = null, context = null) {
+        console.log(`[DetailsPanel] showInternalConversationFullView called with agentName: ${agentName}, stepId: ${stepId}, context:`, context);
+        
         // First try to get data from our own storage
         let customData = this.customAgentData.get(agentName);
         let internalConversation = [];
@@ -1154,10 +1171,12 @@ class DetailsPanel {
         if (customData && customData.internalConversation && customData.internalConversation.length > 0) {
             // Use our own data if available
             internalConversation = customData.internalConversation;
+            console.log(`[DetailsPanel] Found internal conversation in local storage: ${internalConversation.length} messages`);
         } else {
             // Fallback: Use data bridge to get data from ThinkingPanel with optional step ID and context
             if (this.thinkingPanel) {
                 internalConversation = this.thinkingPanel.getInternalConversationForAgent(agentName, stepId, context);
+                console.log(`[DetailsPanel] Retrieved internal conversation from ThinkingPanel: ${internalConversation.length} messages`);
                 
                 // If we got data from thinking panel, initialize our own storage for future use
                 if (internalConversation.length > 0) {
@@ -1172,16 +1191,19 @@ class DetailsPanel {
                     }
                     // Sync the data
                     customData.internalConversation = [...internalConversation];
+                    console.log(`[DetailsPanel] Synchronized ${internalConversation.length} messages to local storage`);
                 }
             }
         }
         
         if (!internalConversation || internalConversation.length === 0) {
-            console.warn('No internal conversation data found for agent:', agentName);
+            console.warn(`[DetailsPanel] No internal conversation data found for agent: ${agentName}`);
             // Show an informative message instead of just returning
             this.showNoInternalConversationMessage(agentName);
             return;
         }
+        
+        console.log(`[DetailsPanel] Displaying internal conversation with ${internalConversation.length} messages for agent ${agentName}`);
         
         const displayName = this.getAgentDisplayName(agentName);
         
@@ -1246,6 +1268,8 @@ class DetailsPanel {
     
     showNoInternalConversationMessage(agentName) {
         const displayName = this.getAgentDisplayName(agentName);
+        
+        console.log(`[DetailsPanel] Showing no internal conversation message for ${agentName}/${displayName}`);
         
         // Clear current content and show no data message
         this.detailsContent.innerHTML = '';
@@ -1554,9 +1578,23 @@ class DetailsPanel {
     }
     
     refreshInternalConversation(agentName) {
+        console.log(`[DetailsPanel] Refreshing internal conversation for agent: ${agentName}`);
+        
         // Force refresh by getting latest data from thinking panel
         if (this.thinkingPanel) {
-            const latestConversation = this.thinkingPanel.getInternalConversationForAgent(agentName);
+            // Try multiple approaches to get the data
+            let latestConversation = this.thinkingPanel.getInternalConversationForAgent(agentName);
+            
+            // If no data found, try with mapped name
+            if (!latestConversation || latestConversation.length === 0) {
+                const mappedName = this.mapLegacyAgentName(agentName);
+                if (mappedName !== agentName) {
+                    console.log(`[DetailsPanel] Trying with mapped name: ${mappedName}`);
+                    latestConversation = this.thinkingPanel.getInternalConversationForAgent(mappedName);
+                }
+            }
+            
+            console.log(`[DetailsPanel] Retrieved ${latestConversation?.length || 0} messages during refresh`);
             
             // Update our storage
             let customData = this.customAgentData.get(agentName);
@@ -1569,7 +1607,7 @@ class DetailsPanel {
                 };
                 this.customAgentData.set(agentName, customData);
             }
-            customData.internalConversation = [...latestConversation];
+            customData.internalConversation = [...(latestConversation || [])];
         }
         
         // Re-show the conversation view with refreshed data

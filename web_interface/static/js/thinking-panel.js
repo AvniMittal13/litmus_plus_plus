@@ -270,7 +270,7 @@ class ThinkingPanel {
         
         // Check if this is a custom agent that might have internal conversations
         // Only ThoughtAgent level agents can have enhanced features
-        const isCustomAgent = level === 'thought_agent' && ['expert_knowledge_agent', 'websearch_and_crawl_agent'].includes(agentName);
+        const isCustomAgent = level === 'thought_agent' && this.isEnhancedAgent(agentName);
         
         // Always create a new step for chronological order
         const stepDiv = document.createElement('div');
@@ -776,7 +776,7 @@ class ThinkingPanel {
         };
         
         // Check if this is a custom agent
-        const isCustomAgent = ['expert_knowledge_agent', 'websearch_and_crawl_agent'].includes(data.agent_name);
+        const isCustomAgent = this.isEnhancedAgent(data.agent_name);
         
         // Create nested agent step
         const stepDiv = document.createElement('div');
@@ -1347,12 +1347,14 @@ class ThinkingPanel {
     }
     
     findMostRecentStepByAgent(agentName) {
-        // Find the most recent step for a given agent
+        // Find the most recent step for a given agent by searching both agent names and timestamps
         let mostRecentStepId = null;
         let mostRecentTime = 0;
         
+        const mappedAgentName = this.mapCustomAgentName(agentName);
+        
         for (const [stepId, stepData] of this.agentSteps) {
-            if (stepData.agentName === agentName) {
+            if (stepData.agentName === agentName || stepData.agentName === mappedAgentName) {
                 const stepTime = new Date(stepData.startTime).getTime();
                 if (stepTime > mostRecentTime) {
                     mostRecentTime = stepTime;
@@ -1360,6 +1362,18 @@ class ThinkingPanel {
                 }
             }
         }
+        
+        // Also check nested agent steps
+        for (const [stepId, stepData] of this.nestedAgentSteps) {
+            if (stepData.agentName === agentName || stepData.agentName === mappedAgentName) {
+                const stepTime = new Date(stepData.startTime || Date.now()).getTime();
+                if (stepTime > mostRecentTime) {
+                    mostRecentTime = stepTime;
+                    mostRecentStepId = stepId;
+                }
+            }
+        }
+        
         return mostRecentStepId;
     }
     
@@ -1400,7 +1414,6 @@ class ThinkingPanel {
             }
             
             console.log(`[ThinkingPanel] No nested conversation found for ${agentName}/${mappedAgentName} in ThoughtAgent context`);
-            return [];
         }
         
         // Original logic for main agent level
@@ -1408,18 +1421,71 @@ class ThinkingPanel {
         if (stepId) {
             const stepData = this.agentSteps.get(stepId);
             if (stepData && stepData.isCustomAgent && stepData.internalConversation) {
+                console.log(`[ThinkingPanel] Found conversation by stepId: ${stepId}`);
                 return stepData.internalConversation;
             }
         }
+        
+        // NEW: Check global agent-based lookup first (most reliable)
+        if (this.agentInternalConversations) {
+            let globalData = this.agentInternalConversations.get(agentName);
+            if (!globalData) {
+                globalData = this.agentInternalConversations.get(mappedAgentName);
+            }
+            if (globalData && globalData.internalConversation) {
+                console.log(`[ThinkingPanel] Found conversation in global lookup for ${agentName}/${mappedAgentName} with ${globalData.internalConversation.length} messages`);
+                return globalData.internalConversation;
+            } else {
+                console.log(`[ThinkingPanel] Global lookup exists but no data found for ${agentName}/${mappedAgentName}. Available keys:`, Array.from(this.agentInternalConversations.keys()));
+            }
+        } else {
+            console.log(`[ThinkingPanel] No global agent conversations map available`);
+        }
+        
+        // NEW: Search through ALL nested agent steps for any matching agent
+        console.log(`[ThinkingPanel] Searching through all nested steps for agent: ${agentName}/${mappedAgentName}`);
+        for (const [nestedStepId, stepData] of this.nestedAgentSteps) {
+            if ((stepData.agentName === agentName || stepData.agentName === mappedAgentName) && 
+                stepData.internalConversation && stepData.internalConversation.length > 0) {
+                console.log(`[ThinkingPanel] Found conversation in nested step ${nestedStepId} for ${agentName}/${mappedAgentName}`);
+                return stepData.internalConversation;
+            }
+        }
+        console.log(`[ThinkingPanel] No conversation found in nested steps for ${agentName}/${mappedAgentName}`);
+        
+        // NEW: Search through ALL main agent steps for any matching agent
+        console.log(`[ThinkingPanel] Searching through all main steps for agent: ${agentName}/${mappedAgentName}`);
+        for (const [mainStepId, stepData] of this.agentSteps) {
+            if ((stepData.agentName === agentName || stepData.agentName === mappedAgentName) && 
+                stepData.internalConversation && stepData.internalConversation.length > 0) {
+                console.log(`[ThinkingPanel] Found conversation in main step ${mainStepId} for ${agentName}/${mappedAgentName}`);
+                return stepData.internalConversation;
+            }
+        }
+        console.log(`[ThinkingPanel] No conversation found in main steps for ${agentName}/${mappedAgentName}`);
+        
         
         // Fallback: Find the most recent step for this agent (backward compatibility)
         const fallbackStepId = this.findMostRecentStepByAgent(agentName);
         if (fallbackStepId) {
             const stepData = this.agentSteps.get(fallbackStepId);
             if (stepData && stepData.isCustomAgent && stepData.internalConversation) {
+                console.log(`[ThinkingPanel] Found conversation by fallback stepId: ${fallbackStepId}`);
                 return stepData.internalConversation;
             }
         }
+        
+        // NEW: Also try with mapped agent name
+        const mappedFallbackStepId = this.findMostRecentStepByAgent(mappedAgentName);
+        if (mappedFallbackStepId) {
+            const stepData = this.agentSteps.get(mappedFallbackStepId);
+            if (stepData && stepData.isCustomAgent && stepData.internalConversation) {
+                console.log(`[ThinkingPanel] Found conversation by mapped fallback stepId: ${mappedFallbackStepId}`);
+                return stepData.internalConversation;
+            }
+        }
+        
+        console.log(`[ThinkingPanel] No internal conversation found for agent: ${agentName}/${mappedAgentName}`);
         return [];
     }
     
@@ -1443,11 +1509,16 @@ class ThinkingPanel {
         // Store internal conversation data from backend for button click access
         try {
             const stepId = data.step_id;
-            const agentName = data.agent_name;
+            const backendAgentName = data.agent_name; // This is what backend sends (e.g., 'expert_knowledge')
             const internalConversation = data.internal_conversation;
             
+            // CRITICAL FIX: Convert backend agent name to standard frontend format
+            const standardAgentName = this.mapCustomAgentName(backendAgentName);
+            
+            console.log(`[ThinkingPanel] storeInternalConversationData called with stepId: ${stepId}, backendAgent: ${backendAgentName}, standardAgent: ${standardAgentName}, conversations: ${internalConversation?.length || 0}`);
+            
             if (!stepId) {
-                console.warn(`[ThinkingPanel] No step_id provided in storage data for agent ${agentName}`);
+                console.warn(`[ThinkingPanel] No step_id provided in storage data for agent ${backendAgentName}`);
                 return;
             }
             
@@ -1460,10 +1531,22 @@ class ThinkingPanel {
                 }
             }
             
-            // If step not found by exact ID, try to find the most recent expert_knowledge step
+            // NEW: Also check nested agent steps
+            let nestedTargetStepData = null;
+            for (const [nestedStepId, stepData] of this.nestedAgentSteps) {
+                if (nestedStepId === stepId || stepData.stepId === stepId) {
+                    nestedTargetStepData = stepData;
+                    console.log(`[ThinkingPanel] Found nested step data for stepId: ${stepId}`);
+                    break;
+                }
+            }
+            
+            // If step not found by exact ID, try to find the most recent step for this agent
             if (!targetStepData) {
                 for (const [currentStepId, stepData] of this.agentSteps) {
-                    if (stepData.agentName === agentName && currentStepId.includes('expert_knowledge')) {
+                    // Try both backend and standard agent names
+                    if ((stepData.agentName === backendAgentName || stepData.agentName === standardAgentName) && 
+                        currentStepId.includes('expert_knowledge')) {
                         // Check if this step doesn't already have internal conversation data
                         if (!stepData.internalConversation) {
                             targetStepData = stepData;
@@ -1473,10 +1556,40 @@ class ThinkingPanel {
                 }
             }
             
+            // Store in nested agent steps if found
+            if (nestedTargetStepData) {
+                nestedTargetStepData.internalConversation = internalConversation;
+                nestedTargetStepData.stepId = stepId;
+                // IMPORTANT: Update agent name to standard format for consistency
+                nestedTargetStepData.agentName = standardAgentName;
+                console.log(`[ThinkingPanel] Stored ${internalConversation.length} messages in nested step ${stepId} for agent ${backendAgentName} -> ${standardAgentName}`);
+                
+                // Update UI for nested step
+                const expandBtn = document.getElementById(`${stepId}-expand-btn`);
+                if (expandBtn) {
+                    expandBtn.classList.add('btn-info');
+                    expandBtn.classList.remove('btn-outline-info');
+                    expandBtn.title = 'View internal conversation (data loaded)';
+                    
+                    let badge = expandBtn.querySelector('.notification-badge');
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        badge.className = 'notification-badge badge bg-success position-absolute';
+                        badge.style.cssText = 'top: -5px; right: -5px; font-size: 0.6em;';
+                        expandBtn.style.position = 'relative';
+                        expandBtn.appendChild(badge);
+                    }
+                    badge.textContent = internalConversation.length;
+                }
+            }
+            
+            // Store in main agent steps if found
             if (targetStepData) {
                 // Store the complete internal conversation data with step ID reference
                 targetStepData.internalConversation = internalConversation;
                 targetStepData.stepId = stepId; // Store the step ID for later reference
+                // IMPORTANT: Update agent name to standard format for consistency
+                targetStepData.agentName = standardAgentName;
                 
                 // Update the expand button to show data is available
                 const expandBtn = document.getElementById(`${stepId}-expand-btn`);
@@ -1497,9 +1610,33 @@ class ThinkingPanel {
                     badge.textContent = internalConversation.length;
                 }
                 
-                console.log(`[ThinkingPanel] Stored ${internalConversation.length} internal conversation messages for step ${stepId}`);
-            } else {
-                console.warn(`[ThinkingPanel] No step found for step_id ${stepId} to store internal conversation data`);
+                console.log(`[ThinkingPanel] Stored ${internalConversation.length} internal conversation messages for step ${stepId} with standardized agent name: ${standardAgentName}`);
+            }
+            
+            // NEW: Create a global agent-based lookup for easy access
+            if (!this.agentInternalConversations) {
+                this.agentInternalConversations = new Map();
+            }
+            
+            // CRITICAL FIX: Store by BOTH backend and standard agent names for maximum compatibility
+            this.agentInternalConversations.set(backendAgentName, {
+                stepId: stepId,
+                internalConversation: internalConversation,
+                timestamp: Date.now(),
+                standardName: standardAgentName
+            });
+            this.agentInternalConversations.set(standardAgentName, {
+                stepId: stepId,
+                internalConversation: internalConversation,
+                timestamp: Date.now(),
+                originalName: backendAgentName
+            });
+            
+            console.log(`[ThinkingPanel] Global storage updated for backend agent: ${backendAgentName} and standard agent: ${standardAgentName} with ${internalConversation.length} messages`);
+            console.log(`[ThinkingPanel] Global storage now contains keys:`, Array.from(this.agentInternalConversations.keys()));
+            
+            if (!targetStepData && !nestedTargetStepData) {
+                console.warn(`[ThinkingPanel] No step found for step_id ${stepId} to store internal conversation data, but stored in global lookup`);
             }
             
         } catch (error) {
@@ -1986,7 +2123,7 @@ class ThinkingPanel {
         const agentName = data.agent_name;
         const content = data.content;
         
-        if (['expert_knowledge_agent', 'websearch_and_crawl_agent'].includes(agentName)) {
+        if (this.isEnhancedAgent(agentName)) {
             // Use the most recent step or find by agent
             let stepId = this.lastAgentStep;
             
@@ -2054,39 +2191,50 @@ class ThinkingPanel {
     }
     
     mapCustomAgentName(customAgentName) {
-        // Map custom agent thinking names to main agent names (and vice versa)
-        const mapping = {
+        // Legacy short name mapping - convert to standard backend names
+        // Backend always uses full names like 'expert_knowledge_agent'
+        const legacyMapping = {
             'expert_knowledge': 'expert_knowledge_agent',
             'websearch_crawl': 'websearch_and_crawl_agent',
             'websearch_and_crawl': 'websearch_and_crawl_agent', // Keep backward compatibility
             'code_executor': 'code_executor_agent'
         };
         
-        // Reverse mapping for backend-to-frontend name resolution
-        const reverseMapping = {
-            'expert_knowledge_agent': 'expert_knowledge',
-            'websearch_and_crawl_agent': 'websearch_crawl',
-            'code_executor_agent': 'code_executor'
-        };
-        
-        // Try forward mapping first, then reverse mapping, then return original
-        return mapping[customAgentName] || reverseMapping[customAgentName] || customAgentName;
+        // Return mapped name or original name (backend names pass through unchanged)
+        return legacyMapping[customAgentName] || customAgentName;
     }
     
-    findMostRecentStepByAgent(agentName) {
-        // Find the most recent step for the given agent
-        const steps = Array.from(this.agentSteps.entries()).reverse();
-        for (const [stepId, stepData] of steps) {
-            if (stepData.agentName === agentName) {
-                return stepId;
-            }
-        }
-        return null;
+    isEnhancedAgent(agentName) {
+        // Map legacy names to standard names and check if it's an enhanced agent
+        const standardName = this.mapCustomAgentName(agentName);
+        return ['expert_knowledge_agent', 'websearch_and_crawl_agent'].includes(standardName);
     }
     
     getInternalConversation(stepId) {
         const stepData = this.agentSteps.get(stepId);
         return stepData ? stepData.internalConversation || [] : [];
+    }
+    
+    // Debug methods for troubleshooting
+    debugAgentStorage() {
+        console.log('=== AGENT STORAGE DEBUG ===');
+        console.log('Global Agent Conversations:', this.agentInternalConversations);
+        console.log('Available keys:', this.agentInternalConversations ? Array.from(this.agentInternalConversations.keys()) : 'None');
+        
+        console.log('Main Agent Steps:');
+        for (const [stepId, stepData] of this.agentSteps) {
+            if (stepData.internalConversation) {
+                console.log(`  - ${stepId}: ${stepData.agentName} (${stepData.internalConversation.length} messages)`);
+            }
+        }
+        
+        console.log('Nested Agent Steps:');
+        for (const [stepId, stepData] of this.nestedAgentSteps) {
+            if (stepData.internalConversation) {
+                console.log(`  - ${stepId}: ${stepData.agentName} (${stepData.internalConversation.length} messages)`);
+            }
+        }
+        console.log('=== END DEBUG ===');
     }
     
     // Public API
@@ -2100,6 +2248,67 @@ class ThinkingPanel {
     
     getActiveAgents() {
         return Array.from(this.activeAgents);
+    }
+    
+    // DEBUG: Method to inspect current internal conversation data state
+    debugInternalConversationState(agentName = null) {
+        console.log('=== DEBUG: Internal Conversation State ===');
+        
+        if (agentName) {
+            const mappedName = this.mapCustomAgentName(agentName);
+            console.log(`Checking for agent: ${agentName} (mapped: ${mappedName})`);
+            
+            // Check global storage
+            if (this.agentInternalConversations) {
+                const globalData1 = this.agentInternalConversations.get(agentName);
+                const globalData2 = this.agentInternalConversations.get(mappedName);
+                console.log(`Global storage for '${agentName}':`, globalData1);
+                console.log(`Global storage for '${mappedName}':`, globalData2);
+            }
+            
+            // Check main steps
+            console.log('Main agent steps:');
+            for (const [stepId, stepData] of this.agentSteps) {
+                if (stepData.agentName === agentName || stepData.agentName === mappedName) {
+                    console.log(`  Step ${stepId}:`, {
+                        agentName: stepData.agentName,
+                        hasInternalConversation: !!stepData.internalConversation,
+                        conversationLength: stepData.internalConversation?.length || 0
+                    });
+                }
+            }
+            
+            // Check nested steps
+            console.log('Nested agent steps:');
+            for (const [stepId, stepData] of this.nestedAgentSteps) {
+                if (stepData.agentName === agentName || stepData.agentName === mappedName) {
+                    console.log(`  Nested Step ${stepId}:`, {
+                        agentName: stepData.agentName,
+                        hasInternalConversation: !!stepData.internalConversation,
+                        conversationLength: stepData.internalConversation?.length || 0
+                    });
+                }
+            }
+        } else {
+            // Show all data
+            console.log('Global agent conversations:', this.agentInternalConversations);
+            console.log('Main agent steps count:', this.agentSteps.size);
+            console.log('Nested agent steps count:', this.nestedAgentSteps.size);
+            
+            console.log('All agents with internal conversations:');
+            for (const [stepId, stepData] of this.agentSteps) {
+                if (stepData.internalConversation) {
+                    console.log(`  Main Step ${stepId}: ${stepData.agentName} (${stepData.internalConversation.length} messages)`);
+                }
+            }
+            for (const [stepId, stepData] of this.nestedAgentSteps) {
+                if (stepData.internalConversation) {
+                    console.log(`  Nested Step ${stepId}: ${stepData.agentName} (${stepData.internalConversation.length} messages)`);
+                }
+            }
+        }
+        
+        console.log('=== END DEBUG ===');
     }
 }
 

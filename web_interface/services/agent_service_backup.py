@@ -35,8 +35,21 @@ class ThoughtAgentService:
             # Ensure ChromaDB is initialized
             self._ensure_chroma_db()
             
+            # Extract thought agent ID from session_id for proper ThoughtAgent context
+            thought_agent_id = None
+            if '_thought_' in session_id:
+                thought_agent_id = session_id.split('_thought_')[1]
+                print(f"[AgentService] Backup - Extracted thought_agent_id: '{thought_agent_id}' from session: {session_id}")
+
             # Create enhanced ThoughtAgent with SocketIO integration
-            agent = EnhancedThoughtAgent(session_id, socketio_instance, self.agent_metadata)
+            agent = EnhancedThoughtAgent(
+                session_id, 
+                socketio_instance, 
+                self.agent_metadata,
+                parent_context='main_agent',
+                thought_agent_id=thought_agent_id,
+                parent_event_forwarder=None
+            )
             
             # Store conversation info
             self.active_conversations[session_id] = {

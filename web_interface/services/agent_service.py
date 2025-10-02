@@ -41,10 +41,24 @@ class ThoughtAgentService:
             # Ensure ChromaDB is initialized
             self._ensure_chroma_db()
             
-            # Create enhanced ThoughtAgent with SocketIO integration
-            agent = EnhancedThoughtAgent(session_id, socketio_instance, self.agent_metadata)
-            
-            # Store conversation info
+            # Extract thought agent ID from session_id for proper ThoughtAgent context
+            # Session format: "main_session_id_thought_agent_name"
+            thought_agent_id = None
+            if '_thought_' in session_id:
+                thought_agent_id = session_id.split('_thought_')[1]
+                print(f"[AgentService] Extracted thought_agent_id: '{thought_agent_id}' from session: {session_id}")
+            else:
+                print(f"[AgentService] No thought agent context found in session: {session_id}")
+
+            # Create enhanced ThoughtAgent with SocketIO integration and proper context
+            agent = EnhancedThoughtAgent(
+                session_id, 
+                socketio_instance, 
+                self.agent_metadata,
+                parent_context='main_agent',  # Set context for proper event handling
+                thought_agent_id=thought_agent_id,  # Pass extracted ThoughtAgent ID
+                parent_event_forwarder=None  # Can be set for event forwarding if needed
+            )            # Store conversation info
             self.active_conversations[session_id] = {
                 'agent': agent,
                 'start_time': datetime.now(),
@@ -196,6 +210,15 @@ class EnhancedThoughtAgent(ThoughtAgent):
         self.parent_context = parent_context  # NEW: 'main_agent' when called from MainAgent
         self.thought_agent_id = thought_agent_id  # NEW: ID for this ThoughtAgent instance
         self.parent_event_forwarder = parent_event_forwarder  # NEW: Event forwarding callback
+        
+        # Debug logging for thought agent context
+        if thought_agent_id:
+            print(f"[EnhancedThoughtAgent] Initialized with ThoughtAgent ID: '{thought_agent_id}'")
+        else:
+            print(f"[EnhancedThoughtAgent] Initialized without ThoughtAgent ID (main agent context)")
+        print(f"[EnhancedThoughtAgent] Session ID: {session_id}")
+        print(f"[EnhancedThoughtAgent] Parent context: {parent_context}")
+        
         self.current_agent = None
         self.message_count = 0
         self._monitoring_active = False
@@ -247,6 +270,16 @@ class EnhancedThoughtAgent(ThoughtAgent):
                 print(f"[EnhancedThoughtAgent] Error forwarding event {event_type}: {e}")
         else:
             print(f"[EnhancedThoughtAgent] No parent forwarder available for {event_type}")
+    
+    def _get_main_session_id(self):
+        """Extract main session ID from ThoughtAgent session ID for frontend communication"""
+        if '_thought_' in self.session_id:
+            main_session_id = self.session_id.split('_thought_')[0]
+            print(f"[EnhancedThoughtAgent] Session extraction: ThoughtAgent={self.session_id} -> Main={main_session_id}")
+            return main_session_id
+        else:
+            print(f"[EnhancedThoughtAgent] Using session ID as-is: {self.session_id}")
+            return self.session_id
     
     def _replace_expert_knowledge_agent(self):
         """Replace the original expert knowledge agent with enhanced version"""
@@ -358,6 +391,9 @@ class EnhancedThoughtAgent(ThoughtAgent):
                         if i < len(messages):
                             self._stream_single_message(messages[i], i)
                 
+                # NEW: Post-processing hook - ensure enhanced agent summaries are emitted
+                self._post_process_enhanced_agents()
+                
                 return messages, summary
                 
             except Exception as e:
@@ -409,6 +445,8 @@ class EnhancedThoughtAgent(ThoughtAgent):
             if not content.strip() or role == 'system':
                 return
             
+            print(f"[EnhancedThoughtAgent] Processing message from agent: '{agent_name}' (enhanced_expert_active: {self.enhanced_expert_knowledge_active})")
+            
             # Detect agent changes and emit agent_started event
             if agent_name != self.current_agent:
                 self.current_agent = agent_name
@@ -442,13 +480,19 @@ class EnhancedThoughtAgent(ThoughtAgent):
     def _detect_and_emit_thinking_process(self, agent_name: str, content: str):
         """Detect custom agent internal activities and emit thinking processes"""
         try:
-            # Handle enhanced Expert Knowledge Agent
-            if agent_name == 'expert_knowledge_agent' and self.enhanced_expert_knowledge_active:
+            # FIXED: Handle both naming conventions for Expert Knowledge Agent
+            # Backend can send either 'expert_knowledge' or 'expert_knowledge_agent'
+            expert_knowledge_names = ['expert_knowledge_agent', 'expert_knowledge']
+            websearch_crawl_names = ['websearch_and_crawl_agent', 'websearch_crawl', 'websearch_and_crawl']
+            
+            # Handle enhanced Expert Knowledge Agent - check for both naming conventions
+            if agent_name in expert_knowledge_names and self.enhanced_expert_knowledge_active:
+                print(f"[EnhancedThoughtAgent] Detected enhanced expert knowledge agent: {agent_name}")
                 self._emit_enhanced_expert_summary()
                 return
                 
             # Enhanced detection for Expert Knowledge Agent (fallback for non-enhanced)
-            if agent_name == 'expert_knowledge_agent':
+            if agent_name in expert_knowledge_names:
                 if any(keyword in content.lower() for keyword in ['searching', 'knowledge', 'database', 'retrieving']):
                     self._emit_custom_thinking('expert_knowledge', 'rag_search', 
                                              'Searching knowledge database for relevant information...')
@@ -456,14 +500,14 @@ class EnhancedThoughtAgent(ThoughtAgent):
                     self._emit_custom_thinking('expert_knowledge', 'rag_processing',
                                              'Processing retrieved knowledge documents...')
             
-            # Handle enhanced Web Search and Crawl Agent
-            elif agent_name == 'websearch_and_crawl_agent' and self.enhanced_websearch_crawl_active:
-                print(f"[EnhancedThoughtAgent] Detected enhanced websearch agent completion, emitting summary")
+            # Handle enhanced Web Search and Crawl Agent - check for multiple naming conventions
+            elif agent_name in websearch_crawl_names and self.enhanced_websearch_crawl_active:
+                print(f"[EnhancedThoughtAgent] Detected enhanced websearch agent: {agent_name}")
                 self._emit_enhanced_websearch_summary()
                 return
                 
             # Enhanced detection for Web Search Agent (fallback for non-enhanced)
-            elif agent_name == 'websearch_and_crawl_agent':
+            elif agent_name in websearch_crawl_names:
                 print(f"[EnhancedThoughtAgent] Detected regular websearch agent activity: {content[:100]}")
                 if any(keyword in content.lower() for keyword in ['search', 'searching', 'google']):
                     self._emit_custom_thinking('websearch_crawl', 'web_search',
@@ -496,6 +540,38 @@ class EnhancedThoughtAgent(ThoughtAgent):
         except Exception as e:
             print(f"[EnhancedThoughtAgent] Error detecting thinking process: {e}")
     
+    def _post_process_enhanced_agents(self):
+        """Post-processing hook to ensure enhanced agent summaries are emitted after group chat completion"""
+        try:
+            print(f"[EnhancedThoughtAgent] Post-processing enhanced agents...")
+            
+            # Check if enhanced expert knowledge agent was active and has data
+            if self.enhanced_expert_knowledge_active and self.enhanced_expert_agent_instance:
+                if hasattr(self.enhanced_expert_agent_instance, 'internal_conversation'):
+                    internal_messages = self.enhanced_expert_agent_instance.internal_conversation
+                    if internal_messages and len(internal_messages) > 0:
+                        print(f"[EnhancedThoughtAgent] Post-processing: Found {len(internal_messages)} expert knowledge messages")
+                        self._emit_enhanced_expert_summary()
+                    else:
+                        print(f"[EnhancedThoughtAgent] Post-processing: No expert knowledge messages to process")
+                else:
+                    print(f"[EnhancedThoughtAgent] Post-processing: Expert agent has no internal_conversation attribute")
+            
+            # Check if enhanced websearch agent was active and has data  
+            if self.enhanced_websearch_crawl_active and self.enhanced_websearch_agent_instance:
+                if hasattr(self.enhanced_websearch_agent_instance, 'internal_conversation'):
+                    internal_messages = self.enhanced_websearch_agent_instance.internal_conversation
+                    if internal_messages and len(internal_messages) > 0:
+                        print(f"[EnhancedThoughtAgent] Post-processing: Found {len(internal_messages)} websearch messages")
+                        self._emit_enhanced_websearch_summary()
+                    else:
+                        print(f"[EnhancedThoughtAgent] Post-processing: No websearch messages to process")
+                else:
+                    print(f"[EnhancedThoughtAgent] Post-processing: Websearch agent has no internal_conversation attribute")
+                    
+        except Exception as e:
+            print(f"[EnhancedThoughtAgent] Error in post-processing enhanced agents: {e}")
+    
     def _emit_custom_thinking(self, agent: str, phase: str, content: str, step_id: str = None):
         """Helper method to emit custom agent thinking with context"""
         thinking_data = {
@@ -510,14 +586,21 @@ class EnhancedThoughtAgent(ThoughtAgent):
     def _emit_enhanced_expert_summary(self):
         """Emit all internal conversation messages from enhanced expert agent for thinking panel"""
         try:
-            if not self.enhanced_expert_agent_instance or not hasattr(self.enhanced_expert_agent_instance, 'internal_conversation'):
-                print(f"[EnhancedThoughtAgent] Enhanced agent instance not available for summary")
+            print(f"[EnhancedThoughtAgent] _emit_enhanced_expert_summary called - checking enhanced agent instance")
+            
+            if not self.enhanced_expert_agent_instance:
+                print(f"[EnhancedThoughtAgent] ERROR: Enhanced expert agent instance is None")
+                return
+                
+            if not hasattr(self.enhanced_expert_agent_instance, 'internal_conversation'):
+                print(f"[EnhancedThoughtAgent] ERROR: Enhanced agent instance does not have internal_conversation attribute")
                 return
             
             internal_messages = self.enhanced_expert_agent_instance.internal_conversation
+            print(f"[EnhancedThoughtAgent] Found {len(internal_messages) if internal_messages else 0} internal messages")
             
             if not internal_messages:
-                print(f"[EnhancedThoughtAgent] No internal messages available")
+                print(f"[EnhancedThoughtAgent] WARNING: No internal messages available - agent may not have processed anything yet")
                 return
             
             # Generate unique step ID for this expert knowledge agent call
@@ -541,21 +624,31 @@ class EnhancedThoughtAgent(ThoughtAgent):
                     step_id=unique_step_id
                 )
             
+            print(f"[EnhancedThoughtAgent] About to emit store_internal_conversation with {len(internal_messages)} messages")
+            print(f"[EnhancedThoughtAgent] ThoughtAgent ID: '{self.thought_agent_id}' (should not be None for nested agents)")
+            
+            # Extract main session ID from ThoughtAgent session ID
+            # ThoughtAgent session format: "main_session_id_thought_agent_name"
+            main_session_id = self._get_main_session_id()
+            
             # Store the full internal conversation data for button click access with step ID
             self.socketio.emit('store_internal_conversation', {
                 'step_id': unique_step_id,
-                'agent_name': 'expert_knowledge',
+                'agent_name': 'expert_knowledge',  # Use consistent backend naming
                 'internal_conversation': internal_messages,
                 'timestamp': datetime.now().isoformat(),
-                'level': 'thought_agent',  # NEW: Indicate this is ThoughtAgent level
-                'thought_agent_id': self.thought_agent_id,  # NEW: Include ThoughtAgent ID
-                'parent_context': self.parent_context  # NEW: Include parent context
-            }, room=self.session_id)
+                'level': 'thought_agent',  # Indicate this is ThoughtAgent level
+                'thought_agent_id': self.thought_agent_id,  # Include ThoughtAgent ID
+                'parent_context': self.parent_context  # Include parent context
+            }, room=main_session_id)  # Emit to main session, not ThoughtAgent session
             
-            print(f"[EnhancedThoughtAgent] Emitted {len(internal_messages)} internal conversation steps for step: {unique_step_id}")
+            print(f"[EnhancedThoughtAgent] ✅ SUCCESSFULLY emitted store_internal_conversation for {len(internal_messages)} messages with step: {unique_step_id}")
+            print(f"[EnhancedThoughtAgent] Emitted to main session {main_session_id} instead of ThoughtAgent session {self.session_id}")
             
         except Exception as e:
-            print(f"[EnhancedThoughtAgent] Error emitting enhanced expert summary: {e}")
+            print(f"[EnhancedThoughtAgent] ❌ ERROR in _emit_enhanced_expert_summary: {e}")
+            import traceback
+            print(f"[EnhancedThoughtAgent] Traceback: {traceback.format_exc()}")
     
     def _create_summary_content(self, message_type: str, message_data: dict) -> str:
         """Create summary content for thinking panel based on internal message type"""
@@ -628,20 +721,29 @@ class EnhancedThoughtAgent(ThoughtAgent):
                 )
             
             # Store the full internal conversation data for button click access with step ID
+            print(f"[EnhancedThoughtAgent] About to emit websearch store_internal_conversation with {len(internal_messages)} messages")
+            print(f"[EnhancedThoughtAgent] Websearch ThoughtAgent ID: '{self.thought_agent_id}' (should not be None for nested agents)")
+            
+            # Extract main session ID from ThoughtAgent session ID
+            main_session_id = self._get_main_session_id()
+            
             self.socketio.emit('store_internal_conversation', {
                 'step_id': unique_step_id,
-                'agent_name': 'websearch_crawl',
+                'agent_name': 'websearch_crawl',  # Use consistent backend naming
                 'internal_conversation': internal_messages,
                 'timestamp': datetime.now().isoformat(),
-                'level': 'thought_agent',  # NEW: Indicate this is ThoughtAgent level
-                'thought_agent_id': self.thought_agent_id,  # NEW: Include ThoughtAgent ID
-                'parent_context': self.parent_context  # NEW: Include parent context
-            }, room=self.session_id)
+                'level': 'thought_agent',  # Indicate this is ThoughtAgent level
+                'thought_agent_id': self.thought_agent_id,  # Include ThoughtAgent ID
+                'parent_context': self.parent_context  # Include parent context
+            }, room=main_session_id)  # Emit to main session, not ThoughtAgent session
             
-            print(f"[EnhancedThoughtAgent] Emitted {len(internal_messages)} internal conversation steps for step: {unique_step_id}")
+            print(f"[EnhancedThoughtAgent] ✅ SUCCESSFULLY emitted websearch store_internal_conversation for {len(internal_messages)} messages with step: {unique_step_id}")
+            print(f"[EnhancedThoughtAgent] Emitted websearch to main session {main_session_id} instead of ThoughtAgent session {self.session_id}")
             
         except Exception as e:
-            print(f"[EnhancedThoughtAgent] Error emitting enhanced websearch summary: {e}")
+            print(f"[EnhancedThoughtAgent] ❌ ERROR in _emit_enhanced_websearch_summary: {e}")
+            import traceback
+            print(f"[EnhancedThoughtAgent] Traceback: {traceback.format_exc()}")
     
 
     def ___emit_enhanced_websearch_summary(self):
@@ -683,6 +785,9 @@ class EnhancedThoughtAgent(ThoughtAgent):
             )
             
             # Store the full internal conversation data for button click access with step ID
+            # Extract main session ID from ThoughtAgent session ID
+            main_session_id = self._get_main_session_id()
+            
             self.socketio.emit('store_internal_conversation', {
                 'step_id': unique_step_id,  # Use step ID instead of agent name
                 'agent_name': 'websearch_crawl',  # Keep for display purposes
@@ -691,7 +796,7 @@ class EnhancedThoughtAgent(ThoughtAgent):
                 'level': 'thought_agent',  # NEW: Indicate this is ThoughtAgent level
                 'thought_agent_id': self.thought_agent_id,  # NEW: Include ThoughtAgent ID
                 'parent_context': self.parent_context  # NEW: Include parent context
-            }, room=self.session_id)
+            }, room=main_session_id)  # Emit to main session, not ThoughtAgent session
             
             print(f"[EnhancedThoughtAgent] Emitted enhanced websearch summary: {message_type} with step ID: {unique_step_id}")
             print(f"[EnhancedThoughtAgent] Stored {len(internal_messages)} internal conversation messages for step: {unique_step_id}")
