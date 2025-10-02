@@ -21,7 +21,7 @@ client_embedding = AzureOpenAI(
 )
 
 # Initialize Firecrawl
-firecrawl = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY36"))
+firecrawl = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY"))
 
 # Path to scraped content JSON file
 SCRAPED_CONTENT_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "scraped_content.json")
