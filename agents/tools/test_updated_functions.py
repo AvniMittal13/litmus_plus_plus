@@ -54,7 +54,10 @@ def test_embedding_functions():
         return False
     
     # Test loading embeddings (if file exists)
-    test_pkl_path = r"C:\Users\avnimittal\OneDrive - Microsoft\Desktop\tp\litmus_agent\all_final_csvs_finall\01_Code_Generation\combined_01_code_generation_embeddings.pkl"
+    relative_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "litmus_agent", "all_final_csvs_finall", "01_Code_Generation", "combined_01_code_generation_embeddings.pkl")
+    fallback_path = r"C:\Users\avnimittal\OneDrive - Microsoft\Desktop\tp\litmus_agent\all_final_csvs_finall\01_Code_Generation\combined_01_code_generation_embeddings.pkl"
+    
+    test_pkl_path = relative_path if os.path.exists(relative_path) else fallback_path
     
     if os.path.exists(test_pkl_path):
         embeddings_data = load_embeddings_from_pkl(test_pkl_path)

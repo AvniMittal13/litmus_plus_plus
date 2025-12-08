@@ -3,7 +3,9 @@ import autogen
 
 from agents.groupchat import GroupChat
 from agents.agent import Agent
-from agents.prompts.thought_agent.research_planner_agent_fire import research_planner_agent
+from agents.prompts.thought_agent.research_planner_agent import research_planner_agent
+
+# from agents.prompts.thought_agent.research_planner_agent_fire import research_planner_agent
 # from agents.prompts.thought_agent.firecrawl_websearch_agent import firecrawl_websearch_agent
 from agents.prompts.thought_agent.send_user_msg_agent import send_user_msg_agent
 # from agents.prompts.thought_agent.call_firecrawl_websearch_agent import call_firecrawl_websearch_agent
@@ -16,6 +18,8 @@ from agents.prompts.thought_agent.db_search_and_crawl_agent import db_search_and
 
 from agents.tools.webcrawl import firecrawl_search_tool
 from agents.prompts.prompts import thought_agent_final_message_format
+
+print("res planner: ", research_planner_agent["description"])
 
 class ThoughtAgent():
     def __init__(self):

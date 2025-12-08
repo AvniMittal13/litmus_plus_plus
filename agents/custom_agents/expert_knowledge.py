@@ -21,11 +21,11 @@ load_dotenv()
 
 from chromadb.utils import embedding_functions
 
-
+# print("expert knowledge: ", os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"), os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"))
 openai_embedding_function = embedding_functions.OpenAIEmbeddingFunction(
-    api_key="55qo1Eche8zYBdz8K15tLd5plNAslD5Yf9eLzqcTsR5hiuCHOkBSJQQJ99BCACHYHv6XJ3w3AAABACOGrHgz",
+    api_key=os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"),
     model_name="text-embedding-ada-002",
-    api_base="https://swarm-ws-openai-5.openai.azure.com",
+    api_base=os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"),
     api_type="azure",
     api_version="2023-05-15",
     deployment_id="text-embedding-ada-002"

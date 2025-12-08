@@ -19,8 +19,11 @@ def test_db_search_and_scrape():
     # Test query
     query = "python code generation benchmarks"
     
-    # Path to one of the embedding files (adjust as needed)
-    db_path = r"C:\Users\avnimittal\OneDrive - Microsoft\Desktop\tp\litmus_agent\all_final_csvs_finall\01_Code_Generation\combined_01_code_generation_embeddings.pkl"
+    # Path to one of the embedding files (try relative path first, then absolute as fallback)
+    relative_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "litmus_agent", "all_final_csvs_finall", "01_Code_Generation", "combined_01_code_generation_embeddings.pkl")
+    fallback_path = r"C:\Users\avnimittal\OneDrive - Microsoft\Desktop\tp\litmus_agent\all_final_csvs_finall\01_Code_Generation\combined_01_code_generation_embeddings.pkl"
+    
+    db_path = relative_path if os.path.exists(relative_path) else fallback_path
     
     print("Testing db_search_and_scrape function...")
     print(f"Query: {query}")
@@ -54,8 +57,11 @@ def test_wrapper_function():
     print("\n" + "="*50)
     print("Testing wrapper function...")
     
-    # Set environment variable for testing
-    os.environ["DB_PATH"] = r"C:\Users\avnimittal\OneDrive - Microsoft\Desktop\tp\litmus_agent\all_final_csvs_finall\01_Code_Generation\combined_01_code_generation_embeddings.pkl"
+    # Set environment variable for testing (try relative path first, then absolute as fallback)
+    relative_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "litmus_agent", "all_final_csvs_finall", "01_Code_Generation", "combined_01_code_generation_embeddings.pkl")
+    fallback_path = r"C:\Users\avnimittal\OneDrive - Microsoft\Desktop\tp\litmus_agent\all_final_csvs_finall\01_Code_Generation\combined_01_code_generation_embeddings.pkl"
+    
+    os.environ["DB_PATH"] = relative_path if os.path.exists(relative_path) else fallback_path
     
     query = "multilingual code evaluation"
     

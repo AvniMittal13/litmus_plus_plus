@@ -3,7 +3,10 @@ import autogen
 
 from agents.groupchat import GroupChat
 from agents.agent import Agent
-from agents.prompts.thought_agent.research_planner_agent_fire import research_planner_agent
+# from agents.prompts.thought_agent.research_planner_agent_fire import research_planner_agent
+from agents.prompts.thought_agent.research_planner_agent import research_planner_agent
+
+
 from agents.prompts.thought_agent.firecrawl_websearch_agent import firecrawl_websearch_agent
 from agents.prompts.thought_agent.send_user_msg_agent import send_user_msg_agent
 from agents.prompts.thought_agent.call_firecrawl_websearch_agent import call_firecrawl_websearch_agent
