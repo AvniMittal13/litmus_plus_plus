@@ -105,7 +105,7 @@ class EnhancedWebSearchCrawlAgent(ConversableAgent):
             # Import firecrawl tool
             try:
                 # from agents.tools.webcrawl import db_search_and_scrape_tool
-                from agents.tools.db_search_and_scrape import db_search_and_scrape_tool
+                from agents.tools.db_search_and_scrape_optimized import db_search_and_scrape_tool
 
             except ImportError as e:
                 self._emit_internal_message(

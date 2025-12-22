@@ -10,7 +10,7 @@ def firecrawl_search(query: str):
     app = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY"))
     response = app.search(
         query=query,
-        limit=1,
+        limit=2,
         scrape_options=ScrapeOptions(formats=["markdown"])
     )
     
@@ -38,6 +38,7 @@ Summarize the results of the webscraped research paper.
 - Provide explanations of all findings in detail.  
 - Add a short summary/insight after each table.  
 - Always Highlight key findings to answer user query. Provide other details and insights from the results as well
+- Always give year, date, paper source correctly from the source
 """
 
 

@@ -500,17 +500,14 @@ class EnhancedMainAgent:
             print(f"[EnhancedMainAgent] Received event {event_type} from ThoughtAgent '{thought_agent_name}' (session: {original_session_id})")
             print(f"[EnhancedMainAgent] Event data: {event_data}")
             
-            # Filter out final responses from send_user_msg_agent - these are internal to ThoughtAgent
-            # Only MainAgent's response_analyzer_agent should provide the final user response
-            if (event_data.get('agent_name') == 'send_user_msg_agent' and 
-                event_data.get('type') in ['main_conversation', 'final_response']):
-                print(f"[EnhancedMainAgent] Filtered out final response from ThoughtAgent '{thought_agent_name}' - using MainAgent synthesis instead")
-                return
-            
             # Filter out conversation completion events from individual ThoughtAgents
+            # Only MainAgent handles final completion
             if event_type == 'main_conversation_completed':
                 print(f"[EnhancedMainAgent] Filtered out completion event from ThoughtAgent '{thought_agent_name}' - MainAgent handles completion")
                 return
+            
+            # Allow send_user_msg_agent messages to pass through so users can see ThoughtAgent conclusions
+            # The MainAgent will still synthesize the final response from all ThoughtAgents
             
             # Create forwarded event data with proper metadata
             forwarded_data = event_data.copy()

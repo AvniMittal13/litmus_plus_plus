@@ -21,7 +21,7 @@ load_dotenv()
 
 from chromadb.utils import embedding_functions
 
-# print("expert knowledge: ", os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"), os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"))
+print("expert knowledge: ", os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"), os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"))
 openai_embedding_function = embedding_functions.OpenAIEmbeddingFunction(
     api_key=os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"),
     model_name="text-embedding-ada-002",

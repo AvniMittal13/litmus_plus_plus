@@ -1,5 +1,5 @@
 from autogen import Agent, ConversableAgent
-from agents.tools.db_search_and_scrape import db_search_and_scrape_tool
+from agents.tools.db_search_and_scrape_optimized import db_search_and_scrape_tool
 from utils.aoai_chat import model_config
 import re
 
