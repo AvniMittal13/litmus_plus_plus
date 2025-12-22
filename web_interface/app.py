@@ -70,12 +70,13 @@ def handle_conversation(data):
         session_id = data.get('session_id')
         user_query = data.get('query', '').strip()
 
-        user_query = f"""
-        Run the following Question without asking any clarifications. Assume answers/responses to the questions and continue
-Use coder agent to generate code for performing predictive analysis by training intelligent regressors wherever required.
+#         user_query = f"""
+#         Run the following Question without asking any clarifications. Assume answers/responses to the questions and continue
+# Use coder agent to generate code for performing predictive analysis by training intelligent regressors wherever required.
 
-Question: {user_query}
-"""
+# Question: {user_query}
+# """
+        
         
         if not user_query:
             emit('error', {'message': 'Query cannot be empty'})

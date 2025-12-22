@@ -57,6 +57,8 @@ Answer the user's research question with **predictive analysis using code execut
      - Dataset properties (size, domain, quality)
      - Target metric to predict
    - **NEVER skip code execution** - predictions must be based on actual code output, not assumptions!
+   - Always instruct coder agent to provide error estimates for the prediction as well.
+   - Always instruct coder agent to do error handling in the code using try-except blocks. Code should NOT error out.
    - After code execution, analyze the outputs and refine if needed.
 
 5. **Validate & Iterate**

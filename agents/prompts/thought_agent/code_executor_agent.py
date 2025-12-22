@@ -6,7 +6,7 @@ import os
 from agents.prompts.thought_agent.coder_agent import working_dir
 
 executor = LocalCommandLineCodeExecutor(
-    timeout=10,  # Timeout for each code execution in seconds.
+    timeout=30,  # Timeout for each code execution in seconds.
     work_dir=working_dir,  # Use the working directory to store the code files.
 )
 

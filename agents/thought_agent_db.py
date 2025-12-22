@@ -67,6 +67,11 @@ class ThoughtAgent():
 
     def run(self, starting_msg):
         final_response, messages, summary = self.groupchat.run(starting_msg)
+        
+        # Handle None values gracefully to prevent concatenation errors
+        final_response = final_response if final_response is not None else "No response generated due to execution error"
+        summary = summary if summary is not None else "Execution completed with errors"
+        
         return thought_agent_final_message_format.format(
             final_response=final_response,
             summary=summary
