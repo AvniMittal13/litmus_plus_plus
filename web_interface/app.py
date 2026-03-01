@@ -1,7 +1,14 @@
-from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit, join_room, leave_room
+# SQLite fix for ChromaDB on Azure (must run before ANY chromadb import)
 import sys
 import os
+try:
+    import pysqlite3
+    sys.modules['sqlite3'] = pysqlite3
+except ImportError:
+    pass
+
+from flask import Flask, render_template, request, send_from_directory, abort
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import uuid
 import threading
 import json
@@ -38,6 +45,17 @@ session_manager = SessionManager()
 def index():
     """Main chat interface"""
     return render_template('index.html')
+
+@app.route('/agent_outputs/<path:filename>')
+def serve_agent_output(filename):
+    """Serve generated files (images, etc.) from agent_outputs directory"""
+    # Resolve agent_outputs relative to project root (one level up from web_interface)
+    agent_outputs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'agent_outputs'))
+    # Security: ensure the resolved path stays within agent_outputs
+    requested_path = os.path.abspath(os.path.join(agent_outputs_dir, filename))
+    if not requested_path.startswith(agent_outputs_dir):
+        abort(403)
+    return send_from_directory(agent_outputs_dir, filename)
 
 @socketio.on('connect')
 def on_connect():
