@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """
-Startup script for local development and testing
-For Azure App Service deployment, use app.py with gunicorn instead
+Startup script for both local development and Azure App Service deployment
+Usage: python startup.py
 """
 import os
 import sys
+
+# Eventlet monkey-patching MUST happen before any other imports
+# Required for production (FLASK_ENV=production) where SocketIO uses eventlet
+if os.environ.get('FLASK_ENV') == 'production':
+    import eventlet
+    eventlet.monkey_patch()
+
 from dotenv import load_dotenv
 
 # Add the current directory to Python path
@@ -38,8 +45,9 @@ if __name__ == '__main__':
     # Set production configuration
     debug_mode = os.environ.get('FLASK_ENV') != 'production'
     
-    # For production Azure deployment, allow unsafe werkzeug
+    # In production with eventlet, don't pass allow_unsafe_werkzeug (eventlet has its own WSGI server)
+    # In development with threading mode, allow_unsafe_werkzeug is needed for Werkzeug
     if os.environ.get('FLASK_ENV') == 'production':
-        socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False, allow_unsafe_werkzeug=True)
+        socketio.run(app, debug=False, host='0.0.0.0', port=port, use_reloader=False)
     else:
-        socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False)
+        socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False, allow_unsafe_werkzeug=True)
