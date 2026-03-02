@@ -21,7 +21,7 @@ load_dotenv()
 
 from chromadb.utils import embedding_functions
 
-# print("expert knowledge: ", os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"), os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"))
+
 openai_embedding_function = embedding_functions.OpenAIEmbeddingFunction(
     api_key=os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"),
     model_name="text-embedding-ada-002",
@@ -62,16 +62,46 @@ class Expert_Knowledge_Agent(ConversableAgent):
 
         assistant = AssistantAgent(
             name="assistant",
-            system_message="""
-You are the Expert Knowledge Agent, providing guidance like an experienced PhD researcher in a multilingual domain.  
+            system_message= """
+You are the Expert Knowledge Agent, acting as a senior multilingual NLP researcher guiding another researcher through complex performance prediction or multilingual modeling challenges.
 
-- You have access to a large corpus of expert knowledge about steps taken by expert researchers in multilingual nlp contexts. Based on the query and retreived results provide expert knowledge about what should be done next.
-- Your results are used for planning an **effective research strategy**.
-- Your role is to guide the next steps in a research project, including what data to collect, how to generate features, what features to collect in such a situation, how to structure it, and how to analyze it.
-- If relevant expert information on how to proceed further cannot be found, clearly state that.
-- Your response will be used to plan the next steps effectively.
-- You only tell based on output of `ragproxyagent` which searches and gives you relevent piece of context. Use that as your source of groundtruth.
-""",
+You have access to a corpus of expert research practices, experimental strategies, and multilingual NLP analysis guides via a RAG system. Based on retrieved passages from that knowledge base, your job is to translate the content into **clear, actionable next steps**.
+
+### Your task:
+- **Extract expert insights** from the retrieved content and **explain exactly how to proceed** in the current research scenario.
+- Provide **step-by-step, structured guidance** covering:
+  - What data to gather (e.g., benchmarks, features, corpora)
+  - What features to compute (e.g., tokenizer metrics, typological distance, vocabulary overlap)
+  - How to structure and organize the data for modeling
+  - What modeling strategies are appropriate (e.g., regression, ranking, multi-task learning)
+  - How to analyze and interpret the results (e.g., performance validation, feature importance)
+- Where relevant, **highlight trade-offs, risks, and fallback options**.
+
+### Response requirements:
+- Your answer **must be detailed, specific, and logically structured**.
+- DO NOT repeat retrieved passages — instead, synthesize them into **explicit research guidance**.
+- If the retrieved results are not sufficient to recommend next steps, **clearly state that and explain why**.
+- DONOT give code in your response
+- Give instructions for reiterations.
+
+Your goal is to **bridge expert knowledge with practical next actions**, so the researcher can confidently move forward with their experiment or modeling strategy.
+Tell all details and best practices in a concise structured manner. Tell these according to the user query.
+"""
+       
+            
+            
+            
+#             """
+# You are the Expert Knowledge Agent, providing guidance like an experienced PhD researcher in a multilingual domain.  
+
+# - You have access to a large corpus of expert knowledge about steps taken by expert researchers in multilingual nlp contexts. Based on the query and retreived results provide expert knowledge about what should be done next.
+# - Your results are used for planning an **effective research strategy**.
+# - Your role is to guide the next steps in a research project, including what data to collect, how to generate features, what features to collect in such a situation, how to structure it, and how to analyze it.
+# - If relevant expert information on how to proceed further cannot be found, clearly state that.
+# - Your response will be used to plan the next steps effectively.
+# - You only tell based on output of `ragproxyagent` which searches and gives you relevent piece of context. Use that as your source of groundtruth.
+# """
+,
             llm_config=model_config,
         )
         ragproxyagent = RetrieveUserProxyAgent(
@@ -83,13 +113,15 @@ You are the Expert Knowledge Agent, providing guidance like an experienced PhD r
                 "docs_path": [
                     # "https://raw.githubusercontent.com/microsoft/FLAML/main/website/docs/Examples/Integrate%20-%20Spark.md",
                     # "https://raw.githubusercontent.com/microsoft/FLAML/main/website/docs/Research.md",
-                    os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "knowledge.md")
+                    # "C:\\Users\\avnimittal\\OneDrive - Microsoft\\Desktop\\tp\\litmus_agent\\knowledge\\knowledge.md",
+                    # "C:\\Users\\avnimittal\\OneDrive - Microsoft\\Desktop\\tp\\litmus_agent\\knowledge\\knowledge_2.md"
+                     os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "knowledge_2.md")
                     # os.path.join(os.path.abspath(""), "..", "website", "docs"),
                 ],
                 "custom_text_types": ["mdx"],
                 "chunk_token_size": 1000,
                 "vector_db": "chroma",
-                "collection_name": "expert_knowledge_new",
+                "collection_name": "expert_knowledge_new2",
                 "model": model_config["config_list"][0]["model"],
                 # "model": os.getenv("OPENAI_EMBEDDING_MODEL"),
                 "client": chromadb.PersistentClient(path="./tmp/db"),
