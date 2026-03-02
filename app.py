@@ -2,17 +2,9 @@
 """
 WSGI entry point for Azure App Service deployment with gunicorn
 This file provides the 'app' object that gunicorn expects
-
-Usage (production): gunicorn --worker-class eventlet -w 1 --timeout 600 -b 0.0.0.0:8000 app:app
 """
 import os
 import sys
-
-# Eventlet monkey-patching MUST happen before any other imports
-# This is required when using gunicorn with --worker-class eventlet
-import eventlet
-eventlet.monkey_patch()
-
 from dotenv import load_dotenv
 
 # Add the current directory to Python path
@@ -45,3 +37,4 @@ if __name__ == "__main__":
         socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False, allow_unsafe_werkzeug=True)
     else:
         socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False)
+

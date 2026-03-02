@@ -30,9 +30,9 @@ app.config['SECRET_KEY'] = 'thought-agent-web-interface-key'
 
 environment = os.getenv("FLASK_ENV", "development")
 if environment == "production":
-    socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")
+    socketio = SocketIO(app, async_mode = 'threading', cors_allowed_origins="*")
 else:
-    socketio = SocketIO(app, async_mode='threading', cors_allowed_origins="*")
+    socketio = SocketIO(app,  async_mode = 'threading', cors_allowed_origins="*")
 
 # Initialize services
 agent_service = MainAgentService()
@@ -164,8 +164,8 @@ if __name__ == '__main__':
     # Set debug=False for production deployment
     debug_mode = os.environ.get('FLASK_ENV') != 'production'
     
-    # For production with eventlet, don't pass allow_unsafe_werkzeug
+    # For production Azure deployment, allow unsafe werkzeug
     if os.environ.get('FLASK_ENV') == 'production':
-        socketio.run(app, debug=False, host='0.0.0.0', port=port, use_reloader=False)
-    else:
         socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False, allow_unsafe_werkzeug=True)
+    else:
+        socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False)
