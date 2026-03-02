@@ -33,8 +33,5 @@ if __name__ == "__main__":
 
     debug_mode = os.environ.get('FLASK_ENV') != 'production'
     
-    # For production Azure deployment, allow unsafe werkzeug
-    if os.environ.get('FLASK_ENV') == 'production':
-        socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False, allow_unsafe_werkzeug=True)
-    else:
-        socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False)
+    # Run the app
+    socketio.run(app, debug=debug_mode, host='0.0.0.0', port=port, use_reloader=False)
