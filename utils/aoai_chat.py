@@ -1,17 +1,57 @@
 from os import getenv
-# from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 from azure.ai.inference.models import SystemMessage, UserMessage, AssistantMessage  
-# from azure.identity import DefaultAzureCredential, get_bearer_token_provider  
 from openai import AzureOpenAI  
 import os
 import re
 
 load_dotenv()
 
-# token_provider = get_bearer_token_provider(
-#     DefaultAzureCredential(), config.config["AZURE_OPENAI_API_SCOPE"]
-#     ) 
+# Auth mode: set USE_API_KEY=true in env for deployment (API key), otherwise uses Azure AD locally
+USE_API_KEY = os.getenv("USE_API_KEY", "false").lower() == "true"
+
+if USE_API_KEY:
+    print("[Auth] Using API key authentication (deployment mode)")
+    token_provider = None
+    
+    def get_embed_token():
+        """Return API key for embedding calls in deployment mode"""
+        return os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING") or os.getenv("OPENAI_API_KEY")
+else:
+    print("[Auth] Using Azure AD token authentication (local mode)")
+    from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+    _credential = DefaultAzureCredential()
+    token_provider = get_bearer_token_provider(
+        _credential, "https://cognitiveservices.azure.com/.default"
+    )
+    
+    def get_embed_token():
+        """Get a fresh Azure AD token for embedding calls"""
+        token = _credential.get_token("https://cognitiveservices.azure.com/.default")
+        return token.token
+
+
+def get_embedding_function():
+    """Return the correct ChromaDB embedding function based on auth mode"""
+    from chromadb.utils import embedding_functions
+    if USE_API_KEY:
+        return embedding_functions.OpenAIEmbeddingFunction(
+            api_key=os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"),
+            model_name="text-embedding-ada-002",
+            api_base=os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"),
+            api_type="azure",
+            api_version="2023-05-15",
+            deployment_id="text-embedding-ada-002"
+        )
+    else:
+        return embedding_functions.OpenAIEmbeddingFunction(
+            api_key=get_embed_token(),
+            model_name="text-embedding-ada-002",
+            api_base=os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"),
+            api_type="azure",
+            api_version="2023-05-15",
+            deployment_id="text-embedding-ada-002"
+        )
 
 def get_env(key, opt=None):
     return getenv(key, opt)
@@ -28,15 +68,22 @@ def get_current_config():
         print(t)
         return t
 
-    t = {
-        "base_url": get_env('OPENAI_BASE_URL'),
-        "api_version": get_env("OPENAI_API_VERSION"),
-        "model": get_env("OPENAI_DEPLOYMENT_NAME"),
-        # "azure_ad_token_provider": token_provider,
-        "api_key": get_env("OPENAI_API_KEY"),
-        "api_type": "azure",
-    }
-
+    if USE_API_KEY:
+        t = {
+            "base_url": get_env('OPENAI_BASE_URL'),
+            "api_version": get_env("OPENAI_API_VERSION"),
+            "model": get_env("OPENAI_DEPLOYMENT_NAME"),
+            "api_key": get_env("OPENAI_API_KEY"),
+            "api_type": "azure",
+        }
+    else:
+        t = {
+            "base_url": get_env('OPENAI_BASE_URL'),
+            "api_version": get_env("OPENAI_API_VERSION"),
+            "model": get_env("OPENAI_DEPLOYMENT_NAME"),
+            "azure_ad_token_provider": token_provider,
+            "api_type": "azure",
+        }
 
     print(t)
     return t
@@ -44,13 +91,18 @@ def get_current_config():
 
 
 endpoint = os.getenv("OPENAI_BASE_URL")  
-client = AzureOpenAI(  
-    azure_endpoint=os.getenv("OPENAI_BASE_URL"),  
-    api_key=os.getenv("OPENAI_API_KEY"),  
-    # credential=DefaultAzureCredential(),  
-    # azure_ad_token_provider=token_provider,  
-    api_version= os.getenv("OPENAI_API_VERSION")
-)  
+if USE_API_KEY:
+    client = AzureOpenAI(  
+        azure_endpoint=os.getenv("OPENAI_BASE_URL"),  
+        api_key=os.getenv("OPENAI_API_KEY"),  
+        api_version=os.getenv("OPENAI_API_VERSION")
+    )
+else:
+    client = AzureOpenAI(  
+        azure_endpoint=os.getenv("OPENAI_BASE_URL"),  
+        azure_ad_token_provider=token_provider,  
+        api_version=os.getenv("OPENAI_API_VERSION")
+    )  
   
 
 model_config = {"config_list": [get_current_config()], "cache_seed": None}

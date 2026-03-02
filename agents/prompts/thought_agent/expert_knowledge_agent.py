@@ -4,7 +4,8 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-openai_embedding_function = embedding_functions.OpenAIEmbeddingFunction(api_key = os.getenv("OPENAI_API_KEY"), model_name=os.getenv("OPENAI_EMBEDDING_MODEL"))
+from utils.aoai_chat import get_embedding_function
+openai_embedding_function = get_embedding_function()
 text_splitter = RecursiveCharacterTextSplitter(separators=["\n\n", "\n", "\r", "\t"])
 
 # description = """

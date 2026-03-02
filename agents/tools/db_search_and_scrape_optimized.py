@@ -8,17 +8,24 @@ from dotenv import load_dotenv
 from firecrawl import FirecrawlApp
 from sklearn.metrics.pairwise import cosine_similarity
 from openai import AzureOpenAI
-from utils.aoai_chat import get_gpt_output
+from utils.aoai_chat import get_gpt_output, USE_API_KEY, token_provider
 import time
 
 load_dotenv()
 
 # Initialize Azure OpenAI client for embeddings
-client_embedding = AzureOpenAI(
-    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"),
-    api_key=os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"),
-    api_version="2025-01-01-preview"
-)
+if USE_API_KEY:
+    client_embedding = AzureOpenAI(
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"),
+        api_key=os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"),
+        api_version="2025-01-01-preview"
+    )
+else:
+    client_embedding = AzureOpenAI(
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"),
+        azure_ad_token_provider=token_provider,
+        api_version="2025-01-01-preview"
+    )
 
 # Initialize Firecrawl
 firecrawl = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY36"))

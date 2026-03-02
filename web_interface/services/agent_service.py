@@ -89,17 +89,10 @@ class ThoughtAgentService:
     def _ensure_chroma_db(self):
         """Ensure ChromaDB collection exists for Expert Knowledge Agent"""
         try:
-            from chromadb.utils import embedding_functions
+            from utils.aoai_chat import get_embedding_function
             
-            # Create embedding function
-            openai_embedding_function = embedding_functions.OpenAIEmbeddingFunction(
-                api_key=os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"),
-                model_name="text-embedding-ada-002",
-                api_base=os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"),
-                api_type="azure",
-                api_version="2023-05-15",
-                deployment_id="text-embedding-ada-002"
-            )
+            # Create embedding function using centralized auth
+            openai_embedding_function = get_embedding_function()
             
             # Create persistent client - Use same path as original expert_knowledge_agent
             db_path = os.path.join(os.path.dirname(__file__), "..", "..", "tmp", "db")
@@ -109,7 +102,7 @@ class ThoughtAgentService:
             
             print(f"[AgentService] Using ChromaDB path: {db_path}")
             
-            collection_name = "expert_knowledge_new"
+            collection_name = "expert_knowledge_new2"
             
             try:
                 # Try to get existing collection
@@ -130,7 +123,7 @@ class ThoughtAgentService:
                 )
                 
                 # Load knowledge documents
-                knowledge_file = os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "knowledge.md")
+                knowledge_file = os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "knowledge_2.md")
                 if os.path.exists(knowledge_file):
                     with open(knowledge_file, 'r', encoding='utf-8') as f:
                         content = f.read()
@@ -143,7 +136,7 @@ class ThoughtAgentService:
                         collection.add(
                             documents=chunks,
                             ids=[f"doc_{i}" for i in range(len(chunks))],
-                            metadatas=[{"source": "knowledge.md", "chunk_id": i} for i in range(len(chunks))]
+                            metadatas=[{"source": "knowledge_2.md", "chunk_id": i} for i in range(len(chunks))]
                         )
                         print(f"[AgentService] Added {len(chunks)} documents to ChromaDB collection")
                 

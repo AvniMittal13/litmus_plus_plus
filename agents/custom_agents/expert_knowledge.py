@@ -15,21 +15,13 @@ from autogen import AssistantAgent
 from autogen.agentchat.contrib.retrieve_user_proxy_agent import RetrieveUserProxyAgent
 import os
 import chromadb
-from utils.aoai_chat import model_config
+from utils.aoai_chat import model_config, get_embedding_function
 from dotenv import load_dotenv
 load_dotenv()
 
 from chromadb.utils import embedding_functions
 
-
-openai_embedding_function = embedding_functions.OpenAIEmbeddingFunction(
-    api_key=os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"),
-    model_name="text-embedding-ada-002",
-    api_base=os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"),
-    api_type="azure",
-    api_version="2023-05-15",
-    deployment_id="text-embedding-ada-002"
-)
+openai_embedding_function = get_embedding_function()
 
 
 class Expert_Knowledge_Agent(ConversableAgent):

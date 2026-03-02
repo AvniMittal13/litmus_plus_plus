@@ -21,18 +21,11 @@ from chromadb.utils import embedding_functions
 
 # Add parent directory to path to import existing utils
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from utils.aoai_chat import model_config
+from utils.aoai_chat import model_config, get_embedding_function
 
 load_dotenv()
 
-openai_embedding_function = embedding_functions.OpenAIEmbeddingFunction(
-    api_key=os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"),
-    model_name="text-embedding-ada-002",
-    api_base=os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"),
-    api_type="azure",
-    api_version="2023-05-15",
-    deployment_id="text-embedding-ada-002"
-)
+openai_embedding_function = get_embedding_function()
 
 
 class EnhancedExpertKnowledgeAgent(ConversableAgent):
@@ -104,12 +97,12 @@ class EnhancedExpertKnowledgeAgent(ConversableAgent):
             retrieve_config={
                 "task": "default",
                 "docs_path": [
-                    os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "knowledge.md")
+                    os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "knowledge_2.md")
                 ],
                 "custom_text_types": ["mdx"],
                 "chunk_token_size": 1000,
                 "vector_db": "chroma",
-                "collection_name": "expert_knowledge_new",
+                "collection_name": "expert_knowledge_new2",
                 "model": model_config["config_list"][0]["model"],
                 "client": chromadb.PersistentClient(path="./tmp/db"),
                 "embedding_function": openai_embedding_function,
