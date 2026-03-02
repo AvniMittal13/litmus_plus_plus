@@ -18,6 +18,8 @@ Your goal is to ensure the User leaves with a complete understanding of both the
 
 description = """
 Final communicator agent. Presents consolidated outputs from the group in a clear, structured, and detailed manner. Explains the planning process, highlights results and metrics, and ensures the User fully understands the outcomes. Asks for clarification from the User if required.
+
+Call only when research planner agent says its done with the analysis or needs some clarification.
 """
 
 send_user_msg_agent = {

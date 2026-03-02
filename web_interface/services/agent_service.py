@@ -109,7 +109,7 @@ class ThoughtAgentService:
             
             print(f"[AgentService] Using ChromaDB path: {db_path}")
             
-            collection_name = "expert_knowledge_new"
+            collection_name = "expert_knowledge_v2"
             
             try:
                 # Try to get existing collection
@@ -130,7 +130,7 @@ class ThoughtAgentService:
                 )
                 
                 # Load knowledge documents
-                knowledge_file = os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "knowledge.md")
+                knowledge_file = os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "knowledge_2.md")
                 if os.path.exists(knowledge_file):
                     with open(knowledge_file, 'r', encoding='utf-8') as f:
                         content = f.read()
@@ -143,7 +143,7 @@ class ThoughtAgentService:
                         collection.add(
                             documents=chunks,
                             ids=[f"doc_{i}" for i in range(len(chunks))],
-                            metadatas=[{"source": "knowledge.md", "chunk_id": i} for i in range(len(chunks))]
+                            metadatas=[{"source": "knowledge_2.md", "chunk_id": i} for i in range(len(chunks))]
                         )
                         print(f"[AgentService] Added {len(chunks)} documents to ChromaDB collection")
                 

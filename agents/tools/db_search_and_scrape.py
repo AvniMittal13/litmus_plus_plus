@@ -21,13 +21,19 @@ client_embedding = AzureOpenAI(
 )
 
 # Initialize Firecrawl
-firecrawl = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY"))
+firecrawl = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY36"))
 
 # Path to scraped content JSON file
 SCRAPED_CONTENT_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "scraped_content.json")
 
+# Path to query cache database
+QUERY_CACHE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "query_cache.pkl")
+
 # Cache for scraped content
 _scraped_content_cache = None
+
+# Cache for query responses
+_query_cache = None
 
 def load_scraped_content() -> Dict:
     """
@@ -51,8 +57,104 @@ def load_scraped_content() -> Dict:
         print(f"Error loading scraped content: {e}")
         return {}
 
-# Use relative path from project root for deployment compatibility
-db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "db", "all_embeddings_combined.pkl")
+def load_query_cache() -> List[Dict]:
+    """
+    Load query cache from pickle file.
+    Returns list of dicts with keys: 'query', 'embedding', 'response'
+    """
+    global _query_cache
+    
+    if _query_cache is not None:
+        return _query_cache
+    
+    try:
+        if os.path.exists(QUERY_CACHE_PATH):
+            with open(QUERY_CACHE_PATH, 'rb') as f:
+                _query_cache = pickle.load(f)
+            print(f"Loaded query cache with {len(_query_cache)} entries")
+            return _query_cache
+        else:
+            print(f"Query cache file not found, creating new cache")
+            _query_cache = []
+            return _query_cache
+    except Exception as e:
+        print(f"Error loading query cache: {e}")
+        _query_cache = []
+        return _query_cache
+
+def save_query_cache(new_entries: List[Dict]):
+    """
+    Save query cache to pickle file by appending new entries.
+    Always loads existing cache first to prevent data loss.
+    """
+    global _query_cache
+    try:
+        # Always load the latest cache from disk first
+        existing_cache = []
+        if os.path.exists(QUERY_CACHE_PATH):
+            try:
+                with open(QUERY_CACHE_PATH, 'rb') as f:
+                    existing_cache = pickle.load(f)
+                print(f"Loaded {len(existing_cache)} existing cache entries")
+            except Exception as e:
+                print(f"Warning: Could not load existing cache: {e}")
+                existing_cache = []
+        
+        # Create a set of existing query texts to avoid duplicates
+        existing_queries = {entry['query'].strip().lower() for entry in existing_cache if 'query' in entry}
+        
+        # Add only new entries that don't already exist
+        added_count = 0
+        for entry in new_entries:
+            query_text = entry.get('query', '').strip().lower()
+            if query_text and query_text not in existing_queries:
+                existing_cache.append(entry)
+                existing_queries.add(query_text)
+                added_count += 1
+        
+        # Save merged cache
+        with open(QUERY_CACHE_PATH, 'wb') as f:
+            pickle.dump(existing_cache, f)
+        
+        _query_cache = existing_cache
+        print(f"Saved query cache: {added_count} new entries added, total {len(existing_cache)} entries")
+    except Exception as e:
+        print(f"Error saving query cache: {e}")
+
+def search_cached_query(query_embedding: List[float], threshold: float = 0.95) -> str:
+    """
+    Search for similar query in cache. If similarity > threshold, return cached response.
+    Returns None if no similar query found.
+    """
+    query_cache = load_query_cache()
+    
+    if not query_cache:
+        return None
+    
+    best_match = None
+    best_similarity = 0.0
+    
+    for cached_item in query_cache:
+        if cached_item.get('embedding') is not None:
+            similarity = cosine_similarity(
+                [query_embedding], 
+                [cached_item['embedding']]
+            )[0][0]
+            
+            if similarity > best_similarity:
+                best_similarity = similarity
+                best_match = cached_item
+
+    print(f"best similarity found: {best_similarity:.4f}")
+    
+    if best_similarity >= threshold:
+        print(f"Found cached query with {best_similarity:.4f} similarity: '{best_match['query']}'")
+        return best_match['response']
+    
+    print()
+    return None
+
+db_path = os.getenv("DB_PATH", "")
 top_k: int = 1
 
 def get_embedding(text: str, model: str = "text-embedding-ada-002") -> List[float]:
@@ -177,16 +279,19 @@ def db_search_and_scrape(query: str ) -> str:
     """
     Main function to:
     1. Create embedding for the query
-    2. Search for similar embeddings in the database
-    3. Extract URLs from top_k results
-    4. Scrape each URL using Firecrawl
-    5. Use scraped content to generate GPT response
+    2. Check if similar query exists in cache (>95% similarity)
+    3. If cached, return cached response
+    4. Otherwise, search for similar embeddings in the database
+    5. Extract URLs from top_k results
+    6. Scrape each URL using Firecrawl
+    7. Use scraped content to generate GPT response
+    8. Save query and response to cache
     
     Args:
         query (str): The search query
     
     Returns:
-        str: GPT-generated response based on scraped content
+        str: GPT-generated response based on scraped content or cached response
     """
     
     print(f"Starting db_search_and_scrape for query: '{query}'")
@@ -200,13 +305,22 @@ def db_search_and_scrape(query: str ) -> str:
     if not query_embedding:
         return "Error: Could not generate embedding for the query."
     
-    # Step 2: Load embeddings from the database
+    # Step 2: Check cache for similar query
+    print("Checking query cache...")
+    cached_response = search_cached_query(query_embedding, threshold=0.87)
+    if cached_response:
+        print("✅ Returning cached response")
+        return cached_response
+    
+    print("No cached response found, proceeding with full search...")
+    
+    # Step 3: Load embeddings from the database
     print("Loading embeddings from database...")
     embeddings_data = load_embeddings_from_pkl(db_path)
     if not embeddings_data:
         return "Error: Could not load embeddings from the database."
     
-    # Step 3: Find similar embeddings
+    # Step 4: Find similar embeddings
     print(f"Searching for top {top_k} similar embeddings...")
     similar_results = search_similar_embeddings(query_embedding, embeddings_data, top_k)
     if not similar_results:
@@ -319,7 +433,18 @@ Focus on information that directly helps answer the user's query while providing
         for content in scraped_contents:
             metadata += f"  • {content['title']} (Similarity: {content['similarity_score']:.4f})\n    {content['url']}\n"
         
-        return gpt_response + metadata
+        final_response = gpt_response + metadata
+        
+        # Step 7: Save to query cache (append only)
+        print("Saving query and response to cache...")
+        new_entry = {
+            'query': query,
+            'embedding': query_embedding,
+            'response': final_response
+        }
+        save_query_cache([new_entry])
+        
+        return final_response
         
     except Exception as e:
         print(f"Error generating GPT response: {e}")
@@ -346,8 +471,8 @@ def run_db_search_and_scrape(query: str):
         if not db_path:
             return "Error: No database path provided. Please specify db_path parameter or set DB_PATH environment variable."
     
-    
-    return db_search_and_scrape(query)
+    final_response = db_search_and_scrape(query)
+    return final_response
 
 # Tool configuration for agent systems
 db_search_and_scrape_tool = {
@@ -355,3 +480,6 @@ db_search_and_scrape_tool = {
     "description": description,
     "run_function": run_db_search_and_scrape
 }
+
+
+# optimized db

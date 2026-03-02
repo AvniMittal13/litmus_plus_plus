@@ -104,12 +104,12 @@ class EnhancedExpertKnowledgeAgent(ConversableAgent):
             retrieve_config={
                 "task": "default",
                 "docs_path": [
-                    os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "knowledge.md")
+                    os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "knowledge_2.md")
                 ],
                 "custom_text_types": ["mdx"],
                 "chunk_token_size": 1000,
                 "vector_db": "chroma",
-                "collection_name": "expert_knowledge_new",
+                "collection_name": "expert_knowledge_v2",
                 "model": model_config["config_list"][0]["model"],
                 "client": chromadb.PersistentClient(path="./tmp/db"),
                 "embedding_function": openai_embedding_function,

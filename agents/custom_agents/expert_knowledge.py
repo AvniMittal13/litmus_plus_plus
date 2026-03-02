@@ -83,13 +83,13 @@ You are the Expert Knowledge Agent, providing guidance like an experienced PhD r
                 "docs_path": [
                     # "https://raw.githubusercontent.com/microsoft/FLAML/main/website/docs/Examples/Integrate%20-%20Spark.md",
                     # "https://raw.githubusercontent.com/microsoft/FLAML/main/website/docs/Research.md",
-                    os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "knowledge.md")
+                    os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "knowledge_2.md")
                     # os.path.join(os.path.abspath(""), "..", "website", "docs"),
                 ],
                 "custom_text_types": ["mdx"],
                 "chunk_token_size": 1000,
                 "vector_db": "chroma",
-                "collection_name": "expert_knowledge_new",
+                "collection_name": "expert_knowledge_v2",
                 "model": model_config["config_list"][0]["model"],
                 # "model": os.getenv("OPENAI_EMBEDDING_MODEL"),
                 "client": chromadb.PersistentClient(path="./tmp/db"),

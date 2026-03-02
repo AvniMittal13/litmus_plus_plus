@@ -123,7 +123,7 @@ def save_query_cache(new_entries: List[Dict]):
     except Exception as e:
         print(f"Error saving query cache: {e}")
 
-def search_cached_query(query_embedding: List[float], threshold: float = 0.95) -> str:
+def search_cached_query(query_embedding: List[float], threshold: float = 0.90) -> str:
     """
     Search for similar query in cache. If similarity > threshold, return cached response.
     Returns None if no similar query found.
@@ -328,7 +328,7 @@ def db_search_and_scrape(query: str, return_intermediates: bool = False):
     
     # Step 2: Check cache for similar query
     print("Checking query cache...")
-    cached_response = search_cached_query(query_embedding, threshold=0.95)
+    cached_response = search_cached_query(query_embedding)
     if cached_response:
         print("✅ Returning cached response")
         intermediates["cache_hit"] = True
