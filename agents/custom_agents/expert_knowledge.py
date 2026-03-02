@@ -21,7 +21,17 @@ load_dotenv()
 
 from chromadb.utils import embedding_functions
 
-openai_embedding_function = get_embedding_function()
+# Lazy-init: don't call get_embedding_function() at import time (causes crash on Azure if env vars aren't ready)
+_openai_embedding_function = None
+
+def _get_openai_embedding_function():
+    global _openai_embedding_function
+    if _openai_embedding_function is None:
+        _openai_embedding_function = get_embedding_function()
+    return _openai_embedding_function
+
+# Keep backward compat reference (but now lazy)
+openai_embedding_function = None
 
 
 class Expert_Knowledge_Agent(ConversableAgent):
@@ -118,7 +128,7 @@ Tell all details and best practices in a concise structured manner. Tell these a
                 # "model": os.getenv("OPENAI_EMBEDDING_MODEL"),
                 "client": chromadb.PersistentClient(path="./tmp/db"),
                 # "embedding_model": os.getenv("OPENAI_EMBEDDING_MODEL"),
-                "embedding_function": openai_embedding_function,
+                "embedding_function": _get_openai_embedding_function(),
                 "embedding_model": "text-embedding-ada-002",
                 "override": True,
                 "get_or_create": True,  # set to False if you don't want to reuse an existing collection, but you'll need to remove the collection manually

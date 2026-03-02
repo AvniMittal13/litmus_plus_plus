@@ -13,22 +13,32 @@ import time
 
 load_dotenv()
 
-# Initialize Azure OpenAI client for embeddings
-if USE_API_KEY:
-    client_embedding = AzureOpenAI(
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"),
-        api_version="2025-01-01-preview"
-    )
-else:
-    client_embedding = AzureOpenAI(
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"),
-        azure_ad_token_provider=token_provider,
-        api_version="2025-01-01-preview"
-    )
+# Lazy-init: don't create clients at import time (causes crash on Azure if env vars aren't ready)
+_client_embedding = None
+_firecrawl = None
 
-# Initialize Firecrawl
-firecrawl = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY36"))
+def _get_client_embedding():
+    global _client_embedding
+    if _client_embedding is None:
+        if USE_API_KEY:
+            _client_embedding = AzureOpenAI(
+                azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"),
+                api_key=os.getenv("AZURE_OPENAI_API_KEY_EMBEDDING"),
+                api_version="2025-01-01-preview"
+            )
+        else:
+            _client_embedding = AzureOpenAI(
+                azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDING"),
+                azure_ad_token_provider=token_provider,
+                api_version="2025-01-01-preview"
+            )
+    return _client_embedding
+
+def _get_firecrawl():
+    global _firecrawl
+    if _firecrawl is None:
+        _firecrawl = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY"))
+    return _firecrawl
 
 # Path to scraped content JSON file
 SCRAPED_CONTENT_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "scraped_content.json")
@@ -169,7 +179,7 @@ def get_embedding(text: str, model: str = "text-embedding-ada-002") -> List[floa
     Retrieve the OpenAI embedding for a single piece of text.
     """
     try:
-        resp = client_embedding.embeddings.create(input=[text], model=model)
+        resp = _get_client_embedding().embeddings.create(input=[text], model=model)
         return resp.data[0].embedding
     except Exception as e:
         print(f"Error getting embedding: {e}")
@@ -253,7 +263,7 @@ def scrape_url_with_firecrawl(url: str) -> Dict:
     try:
         # Use cached data if it's less than 1 hour old (3600000 ms)
         time.sleep(15)
-        scrape_result = firecrawl.scrape_url(
+        scrape_result = _get_firecrawl().scrape_url(
             url, 
             formats=['markdown'],
             max_age=3600000  # 1 hour in milliseconds

@@ -25,7 +25,14 @@ from utils.aoai_chat import model_config, get_embedding_function
 
 load_dotenv()
 
-openai_embedding_function = get_embedding_function()
+# Lazy-init: don't call get_embedding_function() at import time (causes crash on Azure if env vars aren't ready)
+_openai_embedding_function = None
+
+def _get_openai_embedding_function():
+    global _openai_embedding_function
+    if _openai_embedding_function is None:
+        _openai_embedding_function = get_embedding_function()
+    return _openai_embedding_function
 
 
 class EnhancedExpertKnowledgeAgent(ConversableAgent):
@@ -105,7 +112,7 @@ class EnhancedExpertKnowledgeAgent(ConversableAgent):
                 "collection_name": "expert_knowledge_new2",
                 "model": model_config["config_list"][0]["model"],
                 "client": chromadb.PersistentClient(path="./tmp/db"),
-                "embedding_function": openai_embedding_function,
+                "embedding_function": _get_openai_embedding_function(),
                 "embedding_model": "text-embedding-ada-002",
                 "override": True,
                 "get_or_create": True,

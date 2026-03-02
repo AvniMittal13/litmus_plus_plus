@@ -77,7 +77,7 @@ jobs:
         with:
           app-name: 'litmusplusplus'
           slot-name: 'Production'
-          startup-command: 'python startup.py'
+          startup-command: 'gunicorn --worker-class eventlet -w 1 --timeout 600 -b 0.0.0.0:8000 app:app'
         env:
           FLASK_ENV: 'production'
           

@@ -30,12 +30,9 @@ app.config['SECRET_KEY'] = 'thought-agent-web-interface-key'
 
 environment = os.getenv("FLASK_ENV", "development")
 if environment == "production":
-    socketio = SocketIO(app, async_mode = 'threading', cors_allowed_origins="*")
-    # CORS(app, resources={r"/*": {"origins": [config.config["FRONTEND_URL"]]}})
+    socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")
 else:
-    socketio = SocketIO(app,  async_mode = 'threading', cors_allowed_origins="*")
-    # CORS(app, resources={r"/*": {"origins": [config.config["FRONTEND_URL_DEV"],config.config["FRONTEND_URL"]]}})
-
+    socketio = SocketIO(app, async_mode='threading', cors_allowed_origins="*")
 
 # Initialize services
 agent_service = MainAgentService()
